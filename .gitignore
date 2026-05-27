@@ -1,0 +1,30 @@
+node_modules/
+dist/
+dist-electron/
+dist-installer/
+out/
+*.log
+models/*.bin
+
+# whisper.cpp binaries — fetched/built per-platform via scripts
+resources/whisper-bin/*.exe
+resources/whisper-bin/*.dll
+resources/whisper-bin/whisper-cli
+resources/whisper-bin/whisper-server
+resources/whisper-bin/main
+resources/whisper-bin/*.so
+resources/whisper-bin/*.dylib
+
+# Stitch design exports — large folder of HTML/PNG, not source
+stitch jazz ui redesign brief/
+
+.DS_Store
+*.tsbuildinfo
+
+# tsc -b emit artifacts (we use vite for bundling). Keep src/renderer/env.d.ts.
+src/**/*.js
+src/**/*.jsx
+src/**/*.d.ts
+!src/renderer/env.d.ts
+electron.vite.config.js
+electron.vite.config.d.ts
