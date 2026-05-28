@@ -105,11 +105,12 @@ const jazzAPI = {
   toggleListening: (): void =>
     ipcRenderer.send(IPC.TOGGLE_LISTENING),
 
-  moveOverlayBy: (dx: number, dy: number): void =>
-    ipcRenderer.send(IPC.OVERLAY_MOVE_BY, dx, dy),
+  beginOverlayDrag: (): void => ipcRenderer.send(IPC.OVERLAY_DRAG_BEGIN),
 
-  endOverlayMove: (): void =>
-    ipcRenderer.send(IPC.OVERLAY_MOVE_END),
+  endOverlayDrag: (): void => ipcRenderer.send(IPC.OVERLAY_DRAG_END),
+
+  setPillBounds: (b: { x: number; y: number; w: number; h: number }): void =>
+    ipcRenderer.send(IPC.OVERLAY_PILL_BOUNDS, b),
 
   // ── Hotkey capture ────────────────────────────────────────────────────────
   captureHotkey: (): Promise<string> =>
