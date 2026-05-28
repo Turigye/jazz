@@ -135,8 +135,12 @@ export const IPC = {
 
   // Overlay orb interactions (renderer → main)
   TOGGLE_LISTENING: 'jazz:listen:toggle',
-  OVERLAY_MOVE_BY: 'jazz:overlay:moveby',
-  OVERLAY_MOVE_END: 'jazz:overlay:moveend',
+  // Dragging: the renderer signals begin/end and main pins the window under the
+  // global cursor (DIP coords). The renderer also reports its pill bounds so main
+  // can size the window to fit exactly (capped, so it can never balloon).
+  OVERLAY_DRAG_BEGIN: 'jazz:overlay:drag-begin',
+  OVERLAY_DRAG_END: 'jazz:overlay:drag-end',
+  OVERLAY_PILL_BOUNDS: 'jazz:overlay:pill-bounds',
 
   // Hotkey capture (renderer asks main to record the next chord)
   CAPTURE_HOTKEY: 'jazz:hotkey:capture',
