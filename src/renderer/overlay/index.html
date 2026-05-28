@@ -5,7 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Jazz Overlay</title>
     <style>
-      html, body, #root { width: 100%; height: 100%; background: transparent; overflow: hidden; }
+      /* Overlay only. Keep painted content clipped to the BrowserWindow
+         viewport; on Linux/X11, fractional scaling can otherwise report
+         overflowing transparent pixels as a larger input surface. */
+      html, body, #root {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background: transparent;
+      }
     </style>
   </head>
   <body>
