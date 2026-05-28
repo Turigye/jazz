@@ -11,14 +11,25 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 echo "▸ [1/5] Installing system dependencies (sudo)…"
+# `|| true` so one broken third-party apt repo can't abort the whole build.
+# uiohook-napi's native build needs the X11 *-dev* headers (record.h, Intrinsic.h).
 if command -v apt-get >/dev/null 2>&1; then
-  sudo apt-get update -qq
-  sudo apt-get install -y build-essential cmake git xdotool libxss1 libgtk-3-0 libnss3 libasound2t64 || \
-    sudo apt-get install -y build-essential cmake git xdotool libxss1 libgtk-3-0 libnss3 libasound2
+  sudo apt-get update -qq || true
+  sudo apt-get install -y \
+    build-essential cmake git xdotool \
+    libxss1 libgtk-3-0 libnss3 \
+    libxtst-dev libxt-dev libx11-dev libxext-dev libxinerama-dev libxkbcommon-dev \
+    libasound2t64 2>/dev/null || \
+  sudo apt-get install -y \
+    build-essential cmake git xdotool \
+    libxss1 libgtk-3-0 libnss3 \
+    libxtst-dev libxt-dev libx11-dev libxext-dev libxinerama-dev libxkbcommon-dev \
+    libasound2
 elif command -v dnf >/dev/null 2>&1; then
-  sudo dnf install -y gcc-c++ cmake git xdotool libXScrnSaver gtk3 nss alsa-lib
+  sudo dnf install -y gcc-c++ cmake git xdotool libXScrnSaver gtk3 nss alsa-lib \
+    libXt-devel libXtst-devel libX11-devel libXext-devel libXinerama-devel libxkbcommon-devel
 else
-  echo "⚠ Unknown package manager. Install manually: build-essential cmake git xdotool gtk3 nss alsa"
+  echo "⚠ Unknown package manager. Install manually: build-essential cmake git xdotool gtk3 nss alsa libxtst-dev libxt-dev libx11-dev libxext-dev"
 fi
 
 echo

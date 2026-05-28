@@ -16,8 +16,16 @@ let tray: Tray | null = null
 
 function iconPath(): string {
   const base = is.dev ? join(app.getAppPath(), 'resources') : process.resourcesPath
-  const ico = join(base, 'icon.ico')
-  return existsSync(ico) ? ico : ''
+  // Per-platform tray icon resolution. Linux + macOS won't render .ico.
+  const candidates =
+    process.platform === 'win32' ? ['icon.ico', 'icon.png']
+    : process.platform === 'darwin' ? ['iconTemplate.png', 'icon.png']
+    : ['icon.png']
+  for (const name of candidates) {
+    const p = join(base, name)
+    if (existsSync(p)) return p
+  }
+  return ''
 }
 
 function buildMenu(): Menu {

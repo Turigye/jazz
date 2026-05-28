@@ -199,10 +199,10 @@ export default function Wizard(): JSX.Element {
   // ─── Shell ──────────────────────────────────────────────────────────────────
 
   return (
-    <div className="w-screen h-screen flex items-center justify-center p-4 ambient-glow">
-      <div className="w-full max-w-[720px] h-[560px] glass-strong rounded-xl shadow-2xl flex flex-col overflow-hidden">
+    <div className="w-screen h-screen flex items-center justify-center p-3 ambient-glow">
+      <div className="w-full h-full glass-strong rounded-xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="px-10 py-5 border-b border-white/10 flex flex-col gap-1 shrink-0">
+        <header className="px-6 py-4 border-b border-white/10 flex flex-col gap-1 shrink-0">
           <div className="flex items-center justify-between">
             <span className="text-label-sm text-on-surface-variant uppercase tracking-widest">
               Step {stepNum} of {STEPS.length}
@@ -220,7 +220,7 @@ export default function Wizard(): JSX.Element {
         </header>
 
         {/* Body */}
-        <section className="flex-1 p-10 flex items-center justify-center overflow-y-auto">
+        <section className="flex-1 p-6 flex items-center justify-center overflow-y-auto">
           {step === 'welcome' && Welcome}
           {step === 'pick' && Pick}
           {step === 'download' && Download}
@@ -228,7 +228,7 @@ export default function Wizard(): JSX.Element {
         </section>
 
         {/* Footer */}
-        <footer className="px-10 py-4 border-t border-white/10 bg-surface-container-lowest/50 shrink-0 flex items-center justify-between">
+        <footer className="px-6 py-3 border-t border-white/10 bg-surface-container-lowest/50 shrink-0 flex items-center justify-between">
           <div className="text-label-sm text-on-surface-variant">
             {step === 'welcome' && 'Welcome to Jazz'}
             {step === 'pick' && `Selected: ${MODELS[selected].label.split(' (')[0].replace(' ★ Recommended', '')}`}

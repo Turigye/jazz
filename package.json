@@ -1,9 +1,13 @@
 {
   "name": "jazz",
   "version": "1.0.0",
-  "description": "Offline voice dictation for Windows — your personal Wispr Flow",
+  "description": "Offline voice dictation for Windows, Linux, and macOS — your personal Wispr Flow",
   "main": "./out/main/index.js",
-  "author": "Mich",
+  "homepage": "https://github.com/Turigye/jazz",
+  "author": {
+    "name": "Mich",
+    "email": "info@turigye.com"
+  },
   "private": true,
   "scripts": {
     "dev": "electron-vite dev",
@@ -65,6 +69,10 @@
       {
         "from": "resources/icon.ico",
         "to": "icon.ico"
+      },
+      {
+        "from": "resources/icon.png",
+        "to": "icon.png"
       }
     ],
     "win": {

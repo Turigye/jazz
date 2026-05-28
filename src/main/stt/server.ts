@@ -120,7 +120,15 @@ export class WhisperServer {
     }
 
     log.info(`Launching whisper-server on :${this.port} with model ${model}`)
-    this.proc = spawn(bin, args, { windowsHide: true })
+    // On Linux/macOS, the dynamic linker needs to find sibling .so / .dylib
+    // files (libwhisper, libggml, etc.) next to the binary.
+    const libDir = whisperBinDir()
+    const env = {
+      ...process.env,
+      LD_LIBRARY_PATH: [libDir, process.env.LD_LIBRARY_PATH].filter(Boolean).join(':'),
+      DYLD_LIBRARY_PATH: [libDir, process.env.DYLD_LIBRARY_PATH].filter(Boolean).join(':')
+    }
+    this.proc = spawn(bin, args, { windowsHide: true, env })
 
     this.proc.stdout.on('data', (d) => log.debug('[whisper-server]', d.toString().trim()))
     this.proc.stderr.on('data', (d) => log.debug('[whisper-server]', d.toString().trim()))

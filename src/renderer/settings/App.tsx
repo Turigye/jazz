@@ -165,17 +165,36 @@ function GeneralTab(): JSX.Element {
 function ModelTab(): JSX.Element {
   const { config, update } = useConfig()
   const [status, setStatus] = useState<ModelStatus[]>([])
-  const [progress, setProgress] = useState<DownloadProgress | null>(null)
+  // One progress entry per concurrent download, keyed by modelId, so parallel
+  // downloads no longer overwrite each other's bar.
+  const [downloads, setDownloads] = useState<Map<ModelSize, DownloadProgress>>(new Map())
   const [mics, setMics] = useState<{ id: number; name: string }[] | null>(null)
 
   const refresh = (): void => { void window.jazz.getModelsStatus().then(setStatus) }
   useEffect(() => {
     refresh()
     return window.jazz.onDownloadProgress((p) => {
-      setProgress(p)
-      if (p.phase === 'complete') { setProgress(null); refresh() }
+      setDownloads((m) => {
+        const next = new Map(m)
+        if (p.phase === 'complete' || p.phase === 'error') next.delete(p.modelId)
+        else next.set(p.modelId, p)
+        return next
+      })
+      if (p.phase === 'complete') refresh()
     })
   }, [])
+
+  function startDownload(id: ModelSize): void {
+    // Optimistic placeholder so the bar appears instantly, before the first
+    // progress event lands.
+    setDownloads((m) => {
+      if (m.has(id)) return m
+      const next = new Map(m)
+      next.set(id, { modelId: id, bytesDownloaded: 0, totalBytes: MODELS[id].sizeMb * 1024 * 1024, percent: 0, phase: 'downloading' })
+      return next
+    })
+    void window.jazz.startDownload(id)
+  }
 
   if (!config) return <></>
   const installed = (id: ModelSize): boolean => status.find((s) => s.id === id)?.installed ?? false
@@ -237,9 +256,14 @@ function ModelTab(): JSX.Element {
                     Use
                   </button>
                 )
+              ) : downloads.has(id) ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-primary/30 bg-primary/10 text-primary text-label-md tabular-nums">
+                  <span className="material-symbols-outlined text-[16px] animate-pulse">cloud_download</span>
+                  {downloads.get(id)?.percent ?? 0}%
+                </span>
               ) : (
                 <button
-                  onClick={() => void window.jazz.startDownload(id)}
+                  onClick={() => startDownload(id)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-white/10 text-on-surface text-label-md hover:border-white/30 transition-colors"
                 >
                   <span className="material-symbols-outlined text-[16px]">download</span>
@@ -251,20 +275,26 @@ function ModelTab(): JSX.Element {
         })}
       </ul>
 
-      {progress && (
-        <div className="glass-strong rounded-xl p-4 mt-5 flex items-center gap-4">
-          <span className="material-symbols-outlined text-primary">cloud_download</span>
-          <div className="flex-1 min-w-0">
-            <div className="flex justify-between items-baseline text-label-md mb-1">
-              <span className="text-on-surface truncate">
-                {progress.phase === 'verifying' ? 'Verifying…' : `Downloading ${MODELS[progress.modelId].label.split(' (')[0]}`}
-              </span>
-              <span className="text-on-surface-variant tabular-nums">{progress.percent}%</span>
+      {downloads.size > 0 && (
+        <div className="flex flex-col gap-2 mt-5">
+          {Array.from(downloads.entries()).map(([id, p]) => (
+            <div key={id} className="glass-strong rounded-xl p-4 flex items-center gap-4">
+              <span className="material-symbols-outlined text-primary">cloud_download</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-baseline text-label-md mb-1">
+                  <span className="text-on-surface truncate">
+                    {p.phase === 'verifying'
+                      ? `Verifying ${MODELS[id].label.split(' (')[0]}…`
+                      : `Downloading ${MODELS[id].label.split(' (')[0]}`}
+                  </span>
+                  <span className="text-on-surface-variant tabular-nums">{p.percent}%</span>
+                </div>
+                <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-full bg-primary transition-all" style={{ width: `${p.percent}%` }} />
+                </div>
+              </div>
             </div>
-            <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
-              <div className="h-full bg-primary transition-all" style={{ width: `${progress.percent}%` }} />
-            </div>
-          </div>
+          ))}
         </div>
       )}
 

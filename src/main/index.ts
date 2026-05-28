@@ -12,6 +12,16 @@ import { anyModelInstalled } from './stt/models'
 import { whisperServer } from './stt/server'
 import log from './logger'
 
+// ─── Crash safety: log uncaught errors but never block the user with a modal.
+// Electron's default uncaughtException handler shows a modal that re-pops every
+// time the user dismisses it. Registering our own handler suppresses that.
+process.on('uncaughtException', (err) => {
+  log.error('uncaughtException', err)
+})
+process.on('unhandledRejection', (reason) => {
+  log.error('unhandledRejection', reason)
+})
+
 // ─── Single-instance lock ─────────────────────────────────────────────────────
 if (!app.requestSingleInstanceLock()) {
   app.quit()

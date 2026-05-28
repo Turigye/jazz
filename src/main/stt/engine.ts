@@ -126,8 +126,14 @@ export class STTEngine {
     const t0 = Date.now()
 
     try {
+      const libDir = whisperBinDir()
+      const env = {
+        ...process.env,
+        LD_LIBRARY_PATH: [libDir, process.env.LD_LIBRARY_PATH].filter(Boolean).join(':'),
+        DYLD_LIBRARY_PATH: [libDir, process.env.DYLD_LIBRARY_PATH].filter(Boolean).join(':')
+      }
       const text = await new Promise<string>((resolve, reject) => {
-        const proc = spawn(this.binary as string, args, { windowsHide: true })
+        const proc = spawn(this.binary as string, args, { windowsHide: true, env })
         let stdout = ''
         let stderr = ''
         proc.stdout.on('data', (d) => (stdout += d.toString()))

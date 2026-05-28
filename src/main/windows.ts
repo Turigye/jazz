@@ -6,10 +6,11 @@ import { OVERLAY } from '../shared/constants'
 import { getConfig, setConfig } from './store'
 import log from './logger'
 
-/** Resolve the app icon (.ico) for window chrome / taskbar. */
+/** Resolve the app icon for window chrome / taskbar (per platform). */
 function appIcon(): string | undefined {
   const base = is.dev ? join(app.getAppPath(), 'resources') : process.resourcesPath
-  const p = join(base, 'icon.ico')
+  const name = process.platform === 'win32' ? 'icon.ico' : 'icon.png'
+  const p = join(base, name)
   return existsSync(p) ? p : undefined
 }
 
@@ -65,9 +66,12 @@ function clampToBounds(x: number, y: number): { x: number; y: number } {
     maxX = Math.max(maxX, a.x + a.width)
     maxY = Math.max(maxY, a.y + a.height)
   }
+  // Round to integers — Electron's setPosition rejects floats with a
+  // "conversion failure" exception (which Linux fractional display scaling
+  // can otherwise feed in).
   return {
-    x: Math.max(minX, Math.min(x, maxX - OVERLAY.WIDTH)),
-    y: Math.max(minY, Math.min(y, maxY - OVERLAY.HEIGHT))
+    x: Math.round(Math.max(minX, Math.min(x, maxX - OVERLAY.WIDTH))),
+    y: Math.round(Math.max(minY, Math.min(y, maxY - OVERLAY.HEIGHT)))
   }
 }
 
@@ -137,17 +141,25 @@ export function hideOverlay(): void {
 export function moveOverlayBy(dx: number, dy: number): void {
   const win = getOverlayWindow()
   if (!win) return
-  const [x, y] = win.getPosition()
-  const next = clampToBounds(x + dx, y + dy)
-  win.setPosition(next.x, next.y)
+  try {
+    const [x, y] = win.getPosition()
+    const next = clampToBounds(x + Math.round(dx), y + Math.round(dy))
+    win.setPosition(next.x, next.y)
+  } catch (err) {
+    log.warn('moveOverlayBy failed', err)
+  }
 }
 
 /** Persist the orb's current position. */
 export function persistOverlayPosition(): void {
   const win = getOverlayWindow()
   if (!win) return
-  const [x, y] = win.getPosition()
-  setConfig({ overlayPosition: { x, y } })
+  try {
+    const [x, y] = win.getPosition()
+    setConfig({ overlayPosition: { x: Math.round(x), y: Math.round(y) } })
+  } catch (err) {
+    log.warn('persistOverlayPosition failed', err)
+  }
 }
 
 // ─── Settings ───────────────────────────────────────────────────────────────
@@ -208,8 +220,8 @@ export function createWizardWindow(): BrowserWindow {
   }
 
   wizardWindow = new BrowserWindow({
-    width: 720,
-    height: 560,
+    width: 600,
+    height: 460,
     resizable: false,
     title: 'Welcome to Jazz',
     autoHideMenuBar: true,
