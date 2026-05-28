@@ -6,10 +6,11 @@ import { OVERLAY } from '../shared/constants'
 import { getConfig, setConfig } from './store'
 import log from './logger'
 
-/** Resolve the app icon (.ico) for window chrome / taskbar. */
+/** Resolve the app icon for window chrome / taskbar (per platform). */
 function appIcon(): string | undefined {
   const base = is.dev ? join(app.getAppPath(), 'resources') : process.resourcesPath
-  const p = join(base, 'icon.ico')
+  const name = process.platform === 'win32' ? 'icon.ico' : 'icon.png'
+  const p = join(base, name)
   return existsSync(p) ? p : undefined
 }
 
@@ -17,6 +18,86 @@ let overlayWindow: BrowserWindow | null = null
 let settingsWindow: BrowserWindow | null = null
 let wizardWindow: BrowserWindow | null = null
 let recorderWindow: BrowserWindow | null = null
+
+/**
+ * Windows/macOS resize the overlay window to match the actual pill DOM size.
+ * Linux never runtime-resizes the overlay; fractional scaling on X11 can turn
+ * resize feedback into a growing invisible click-trap.
+ */
+const PILL_PAD_PX = 4 // shadow halo on each side
+// Hard ceiling on the orb window so a runaway resize can never balloon it into a
+// giant invisible click-trap. The pill truncates its text at max-w-[180px], so a
+// real pill never exceeds ~280×60; these caps leave margin without clipping.
+const PILL_MAX_W = 320
+const PILL_MAX_H = 80
+// Sub-pixel jitter deadband. Under fractional display scaling, setContentSize ↔
+// ResizeObserver can ping-pong by 1–2px and compound into unbounded growth (the
+// window grew 127→416px during a 1s hold, which dragged the orb upward as the
+// clamp's maxY−h shrank). Ignoring tiny deltas breaks that feedback loop.
+const PILL_RESIZE_DEADBAND = 2
+
+// ─── Linux: fixed-size window, no runtime resize ──────────────────────────────
+// On Linux/X11 (especially with fractional display scaling) resizing the overlay
+// to fit the pill is the *root cause* of every orb bug we've chased:
+//   • setContentSize ↔ ResizeObserver ping-pong grows the window unboundedly,
+//     turning the transparent surface into a screen-wide invisible click-trap.
+//   • That same growth drags the orb UPWARD during a drag — a taller window
+//     shrinks the clamp's maxY−h every frame, so y is pushed up even when the
+//     cursor is perfectly still.
+// A FIXED window size makes growth structurally impossible, so neither bug can
+// occur regardless of scaling rounding. Linux intentionally does not call
+// setContentSize() or setShape() at runtime; both can feed X11/fractional-scale
+// geometry loops. Windows/macOS keep the exact fit-to-pill behavior below — it
+// works perfectly there.
+const IS_LINUX = process.platform === 'linux'
+const LINUX_OVERLAY_W = 56
+const LINUX_OVERLAY_H = 56
+
+function enforceLinuxOverlayBounds(): void {
+  if (!IS_LINUX) return
+  const win = getOverlayWindow()
+  if (!win) return
+  try {
+    const [x, y] = win.getPosition()
+    win.setBounds({ x, y, width: LINUX_OVERLAY_W, height: LINUX_OVERLAY_H }, false)
+  } catch (err) {
+    log.warn('enforceLinuxOverlayBounds failed', err)
+  }
+}
+
+export function setPillBounds(b: { x: number; y: number; w: number; h: number }): void {
+  const win = overlayWindow
+  if (!win || win.isDestroyed() || b.w <= 0 || b.h <= 0) return
+
+  if (IS_LINUX) {
+    // Never resize or reshape on Linux. Runtime geometry mutation is the bug.
+    enforceLinuxOverlayBounds()
+    return
+  }
+
+  // Windows/macOS: fit the window exactly to the pill.
+  if (dragTimer) return
+  const newW = Math.min(PILL_MAX_W, Math.round(b.w + PILL_PAD_PX * 2))
+  const newH = Math.min(PILL_MAX_H, Math.round(b.h + PILL_PAD_PX * 2))
+  const [cw, ch] = win.getContentSize()
+  if (Math.abs(newW - cw) <= PILL_RESIZE_DEADBAND && Math.abs(newH - ch) <= PILL_RESIZE_DEADBAND) {
+    return
+  }
+  try {
+    win.setContentSize(newW, newH, false)
+  } catch (err) {
+    log.warn('setContentSize failed', err)
+  }
+}
+
+function cursorDipPoint(): Electron.Point {
+  const cursor = screen.getCursorScreenPoint()
+  try {
+    return screen.screenToDipPoint(cursor)
+  } catch {
+    return cursor
+  }
+}
 
 const preloadPath = join(__dirname, '../preload/index.js')
 
@@ -51,9 +132,10 @@ function defaultOverlayPos(): { x: number; y: number } {
 /**
  * Clamp a position to the union of ALL displays so the orb can be dragged
  * freely across a multi-monitor setup (only prevented from going fully
- * off the entire virtual desktop).
+ * off the entire virtual desktop). `w`/`h` are the live window size so the
+ * clamp matches the actual (resized) orb, not the stale 220×48 constant.
  */
-function clampToBounds(x: number, y: number): { x: number; y: number } {
+function clampToBounds(x: number, y: number, w: number, h: number): { x: number; y: number } {
   let minX = Infinity
   let minY = Infinity
   let maxX = -Infinity
@@ -65,9 +147,12 @@ function clampToBounds(x: number, y: number): { x: number; y: number } {
     maxX = Math.max(maxX, a.x + a.width)
     maxY = Math.max(maxY, a.y + a.height)
   }
+  // Round to integers — Electron's setPosition rejects floats with a
+  // "conversion failure" exception (which Linux fractional display scaling
+  // can otherwise feed in).
   return {
-    x: Math.max(minX, Math.min(x, maxX - OVERLAY.WIDTH)),
-    y: Math.max(minY, Math.min(y, maxY - OVERLAY.HEIGHT))
+    x: Math.round(Math.max(minX, Math.min(x, maxX - w))),
+    y: Math.round(Math.max(minY, Math.min(y, maxY - h)))
   }
 }
 
@@ -75,24 +160,36 @@ export function createOverlayWindow(): BrowserWindow {
   if (overlayWindow && !overlayWindow.isDestroyed()) return overlayWindow
 
   const saved = getConfig().overlayPosition
-  const pos = saved ? clampToBounds(saved.x, saved.y) : defaultOverlayPos()
+  const pos = saved
+    ? clampToBounds(saved.x, saved.y, OVERLAY.WIDTH, OVERLAY.HEIGHT)
+    : defaultOverlayPos()
 
   overlayWindow = new BrowserWindow({
-    width: OVERLAY.WIDTH,
-    height: OVERLAY.HEIGHT,
+    // Linux: FIXED size — never resized (see setPillBounds). Windows/macOS start
+    // at the configured size and the renderer's ResizeObserver shrinks the window
+    // to exactly fit the pill via setPillBounds() on first paint.
+    width: IS_LINUX ? LINUX_OVERLAY_W : OVERLAY.WIDTH,
+    height: IS_LINUX ? LINUX_OVERLAY_H : OVERLAY.HEIGHT,
     x: pos.x,
     y: pos.y,
     frame: false,
     transparent: true,
-    resizable: false,
+    useContentSize: true,
+    resizable: !IS_LINUX,
     movable: true,
     minimizable: false,
     maximizable: false,
     skipTaskbar: true,
     alwaysOnTop: true,
-    // Non-focusable so clicking the orb never steals focus from the app the
-    // user is dictating into — mouse events still fire.
-    focusable: false,
+    // Focus policy is platform-specific:
+    //   • Windows/macOS: focusable:false still delivers mouse clicks while
+    //     never stealing focus from the app being dictated into — ideal.
+    //   • Linux/X11: a non-focusable window receives NO mouse input at all —
+    //     clicks pass straight through to the window below (the "I click through
+    //     the orb" bug). So on Linux the orb must be focusable to be usable.
+    //     The resulting focus-theft on click is undone by restoring the prior
+    //     active window before paste (see inject/focus tracker).
+    focusable: process.platform === 'linux',
     show: false,
     hasShadow: false,
     webPreferences: {
@@ -104,6 +201,8 @@ export function createOverlayWindow(): BrowserWindow {
 
   overlayWindow.setAlwaysOnTop(true, 'screen-saver')
   overlayWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  if (IS_LINUX) overlayWindow.setResizable(false)
+  enforceLinuxOverlayBounds()
 
   loadRenderer(overlayWindow, 'overlay')
 
@@ -126,6 +225,7 @@ export function getOverlayWindow(): BrowserWindow | null {
 export function showOverlay(): void {
   const win = getOverlayWindow() ?? createOverlayWindow()
   if (!win.isVisible()) win.showInactive()
+  enforceLinuxOverlayBounds()
 }
 
 export function hideOverlay(): void {
@@ -133,21 +233,77 @@ export function hideOverlay(): void {
   if (win?.isVisible()) win.hide()
 }
 
-/** Move the orb by a pixel delta (used while dragging). */
-export function moveOverlayBy(dx: number, dy: number): void {
+// ─── Dragging (main-driven, absolute cursor positioning) ──────────────────────
+// The renderer signals drag begin/end; main pins the window under the cursor at
+// a fixed grab offset, polling the authoritative global cursor (DIP coords from
+// getCursorScreenPoint). Two hard safety rails make this robust on Linux/X11:
+//   1. The window can never balloon (setPillBounds caps + deadbands its size),
+//      so the orb stays under the cursor and pointer-capture is never lost — the
+//      earlier "drift up / chase the cursor forever" was a *symptom* of runaway
+//      growth shrinking the clamp boundary, not the drag math itself.
+//   2. A wall-clock guard auto-ends a drag that somehow outlives its pointer-up
+//      (e.g. a missed X11 button-release), so the orb can never get stuck
+//      following the cursor.
+const DRAG_MAX_MS = 30_000
+let dragTimer: ReturnType<typeof setInterval> | null = null
+let dragGrab: { dx: number; dy: number } | null = null
+let dragStartedAt = 0
+
+export function beginOverlayDrag(): void {
   const win = getOverlayWindow()
   if (!win) return
-  const [x, y] = win.getPosition()
-  const next = clampToBounds(x + dx, y + dy)
-  win.setPosition(next.x, next.y)
+  endOverlayDrag(false) // clear any stale drag
+  try {
+    const cursor = cursorDipPoint()
+    const [wx, wy] = win.getPosition()
+    dragGrab = { dx: cursor.x - wx, dy: cursor.y - wy }
+    dragStartedAt = Date.now()
+    dragTimer = setInterval(() => {
+      const w = getOverlayWindow()
+      if (!w || !dragGrab) return
+      if (Date.now() - dragStartedAt > DRAG_MAX_MS) {
+        endOverlayDrag() // safety: never chase the cursor indefinitely
+        return
+      }
+      try {
+        const c = cursorDipPoint()
+        const [liveW, liveH] = w.getContentSize()
+        const cw = IS_LINUX ? LINUX_OVERLAY_W : liveW
+        const ch = IS_LINUX ? LINUX_OVERLAY_H : liveH
+        const next = clampToBounds(c.x - dragGrab.dx, c.y - dragGrab.dy, cw, ch)
+        if (IS_LINUX) {
+          w.setBounds({ x: next.x, y: next.y, width: LINUX_OVERLAY_W, height: LINUX_OVERLAY_H }, false)
+        } else {
+          w.setPosition(next.x, next.y)
+        }
+      } catch (err) {
+        log.warn('drag tick failed', err)
+      }
+    }, 16)
+  } catch (err) {
+    log.warn('beginOverlayDrag failed', err)
+  }
+}
+
+export function endOverlayDrag(persist = true): void {
+  if (dragTimer) {
+    clearInterval(dragTimer)
+    dragTimer = null
+  }
+  dragGrab = null
+  if (persist) persistOverlayPosition()
 }
 
 /** Persist the orb's current position. */
 export function persistOverlayPosition(): void {
   const win = getOverlayWindow()
   if (!win) return
-  const [x, y] = win.getPosition()
-  setConfig({ overlayPosition: { x, y } })
+  try {
+    const [x, y] = win.getPosition()
+    setConfig({ overlayPosition: { x: Math.round(x), y: Math.round(y) } })
+  } catch (err) {
+    log.warn('persistOverlayPosition failed', err)
+  }
 }
 
 // ─── Settings ───────────────────────────────────────────────────────────────
@@ -208,8 +364,8 @@ export function createWizardWindow(): BrowserWindow {
   }
 
   wizardWindow = new BrowserWindow({
-    width: 720,
-    height: 560,
+    width: 600,
+    height: 460,
     resizable: false,
     title: 'Welcome to Jazz',
     autoHideMenuBar: true,
