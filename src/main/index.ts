@@ -10,7 +10,24 @@ import { createOverlayWindow, createWizardWindow, createSettingsWindow, createRe
 import { sttEngine } from './stt/engine'
 import { anyModelInstalled } from './stt/models'
 import { whisperServer } from './stt/server'
+import { startFocusTracking, stopFocusTracking } from './inject'
 import log from './logger'
+
+// Test/dev escape hatch: run an isolated instance beside an installed Jazz app
+// without sharing the single-instance lock, config, logs, or downloaded models.
+if (process.env.JAZZ_USER_DATA_DIR) {
+  app.setPath('userData', process.env.JAZZ_USER_DATA_DIR)
+}
+
+// ─── Crash safety: log uncaught errors but never block the user with a modal.
+// Electron's default uncaughtException handler shows a modal that re-pops every
+// time the user dismisses it. Registering our own handler suppresses that.
+process.on('uncaughtException', (err) => {
+  log.error('uncaughtException', err)
+})
+process.on('unhandledRejection', (reason) => {
+  log.error('unhandledRejection', reason)
+})
 
 // ─── Single-instance lock ─────────────────────────────────────────────────────
 if (!app.requestSingleInstanceLock()) {
@@ -66,6 +83,10 @@ function bootstrap(): void {
     })
     hotkeyManager.start()
 
+    // Linux: remember the last non-Jazz active window so paste targets it even
+    // if the user toggled recording by clicking the (focusable) orb.
+    startFocusTracking()
+
     // First-run wizard if no model is installed yet.
     if (isFirstRun() || !anyModelInstalled()) {
       log.info('First run / no model — opening wizard')
@@ -80,6 +101,7 @@ function bootstrap(): void {
 
   app.on('will-quit', () => {
     hotkeyManager.stop()
+    stopFocusTracking()
     void whisperServer.stop()
   })
 }
