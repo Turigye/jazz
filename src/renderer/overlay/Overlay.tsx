@@ -31,16 +31,39 @@ function Waveform(): JSX.Element {
 }
 
 export default function Overlay(): JSX.Element {
+  const isLinux = navigator.userAgent.includes('Linux')
   const [state, setState] = useState<JazzState>('idle')
   const [text, setText] = useState<string>('')
   const [config, setConfig] = useState<JazzConfig | null>(null)
   const [elapsed, setElapsed] = useState<number>(0)
   const recordStart = useRef<number>(0)
 
-  // Drag tracking
+  // Pill DOM element — its bounds get sent to main so the OS window is resized
+  // to fit exactly (no transparent dead zone that would capture stray clicks).
+  const pillRef = useRef<HTMLDivElement | null>(null)
+
+  // Drag state. Main pins the window under the cursor while dragging; here we
+  // only decide click-vs-drag (a sub-threshold move = a click = toggle).
   const dragging = useRef(false)
   const moved = useRef(0)
-  const lastPt = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+
+  useEffect(() => {
+    const el = pillRef.current
+    if (!el) return
+    const report = (): void => {
+      const r = el.getBoundingClientRect()
+      window.jazz.setPillBounds({
+        x: Math.round(r.left),
+        y: Math.round(r.top),
+        w: Math.round(r.width),
+        h: Math.round(r.height)
+      })
+    }
+    report()
+    const ro = new ResizeObserver(report)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [state, text])
 
   useEffect(() => {
     void window.jazz.getConfig().then(setConfig)
@@ -63,32 +86,44 @@ export default function Overlay(): JSX.Element {
     return () => clearInterval(id)
   }, [state])
 
+  // End-drag is bound to the WINDOW (not the pill) so we never miss the
+  // button-release if the pill briefly slips out from under the cursor on X11.
+  // Combined with the main-side wall-clock guard, the orb can never get stuck
+  // chasing the cursor — the core failure of earlier attempts.
+  useEffect(() => {
+    function finishDrag(): void {
+      if (!dragging.current) return
+      dragging.current = false
+      window.jazz.endOverlayDrag()
+      if (moved.current < OVERLAY.DRAG_THRESHOLD) window.jazz.toggleListening()
+    }
+    window.addEventListener('pointerup', finishDrag)
+    window.addEventListener('pointercancel', finishDrag)
+    window.addEventListener('blur', finishDrag)
+    return () => {
+      window.removeEventListener('pointerup', finishDrag)
+      window.removeEventListener('pointercancel', finishDrag)
+      window.removeEventListener('blur', finishDrag)
+    }
+  }, [])
+
   function onPointerDown(e: React.PointerEvent): void {
+    if (e.button !== 0) return
     dragging.current = true
     moved.current = 0
-    lastPt.current = { x: e.screenX, y: e.screenY }
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    // Capture so pointermove/up keep arriving even if the pill momentarily slips
+    // out from under the cursor during a fast flick.
+    try {
+      ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    } catch {
+      /* capture is best-effort */
+    }
+    window.jazz.beginOverlayDrag()
   }
 
   function onPointerMove(e: React.PointerEvent): void {
     if (!dragging.current) return
-    const dx = e.screenX - lastPt.current.x
-    const dy = e.screenY - lastPt.current.y
-    if (dx === 0 && dy === 0) return
-    moved.current += Math.abs(dx) + Math.abs(dy)
-    lastPt.current = { x: e.screenX, y: e.screenY }
-    window.jazz.moveOverlayBy(dx, dy)
-  }
-
-  function onPointerUp(e: React.PointerEvent): void {
-    if (!dragging.current) return
-    dragging.current = false
-    ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
-    if (moved.current < OVERLAY.DRAG_THRESHOLD) {
-      window.jazz.toggleListening()
-    } else {
-      window.jazz.endOverlayMove()
-    }
+    moved.current += Math.abs(e.movementX) + Math.abs(e.movementY)
   }
 
   const modelBadge = config ? MODEL_BADGE[config.activeModel] : 'jazz'
@@ -116,14 +151,54 @@ export default function Overlay(): JSX.Element {
       ? 'bg-error-container/20'
       : 'bg-surface-container/80'
 
+  if (isLinux) {
+    const icon =
+      state === 'transcribing'
+        ? 'progress_activity'
+        : state === 'injecting'
+          ? 'edit_note'
+          : state === 'success'
+            ? 'check_circle'
+            : state === 'error'
+              ? 'warning'
+              : 'mic'
+
+    return (
+      <div className="fixed inset-0 flex items-start justify-start select-none overflow-hidden">
+        <div
+          ref={pillRef}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          title="Click to toggle listening · drag to move"
+          className={`relative flex h-14 w-14 shrink-0 items-center justify-center rounded-full backdrop-blur-glass border cursor-pointer overflow-hidden ${borderClass} ${bgClass}`}
+        >
+          {state === 'recording' && (
+            <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(196,74,240,0.6)]" />
+          )}
+          <span
+            className={`material-symbols-outlined ${state === 'idle' || state === 'success' || state === 'error' ? 'filled' : ''} text-[22px] ${
+              state === 'recording' || state === 'injecting'
+                ? 'text-primary'
+                : state === 'error'
+                  ? 'text-error'
+                  : 'text-on-surface'
+            } ${state === 'transcribing' ? 'animate-spin' : ''}`}
+          >
+            {icon}
+          </span>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="w-full h-full flex items-center justify-center select-none overflow-hidden">
+    <div className="fixed top-0 left-0 max-w-full max-h-full p-[1px] select-none overflow-hidden">
       <div
+        ref={pillRef}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
         title="Click to toggle listening · drag to move"
-        className={`animate-fade-in inline-flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-glass border cursor-pointer max-w-full ${borderClass} ${shadowClass} ${bgClass}`}
+        className={`animate-fade-in inline-flex max-w-[272px] items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-glass border cursor-pointer overflow-hidden ${borderClass} ${shadowClass} ${bgClass}`}
       >
         {state === 'idle' && (
           <>
@@ -136,7 +211,7 @@ export default function Overlay(): JSX.Element {
           <>
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(196,74,240,0.6)] ml-0.5" />
             <Waveform />
-            <span className="text-label-md text-primary font-medium tabular-nums whitespace-nowrap">
+            <span className="text-label-md text-primary font-medium tabular-nums whitespace-nowrap truncate">
               Listening {fmtElapsed(elapsed)}
             </span>
           </>
