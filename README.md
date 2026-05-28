@@ -1,97 +1,112 @@
-# 🎵 Jazz
+# Jazz for Linux
 
-**Your personal offline voice dictation app for Windows.**  
-*Like Wispr Flow — but 100% local, 100% free, zero cloud.*
+Offline voice dictation for Linux. Like Wispr Flow, but local, free, and private.
 
----
+This `linux` branch contains the Linux installer path and the Linux-specific floating orb fix. The Windows-stable code remains on `master`; macOS packaging lives on `mac`.
 
-## What is Jazz?
+## What This Branch Is For
 
-Jazz lets you hold `Ctrl+Win`, speak naturally, and have your words instantly typed into any app on your computer — Cursor, VS Code, ChatGPT, Claude, Slack, Discord, Notepad, the browser, anywhere.
+Use this branch to test and ship Linux builds:
 
-It runs **entirely on your machine**. No API keys. No subscriptions. No audio ever leaves your computer.
+- AppImage for quick testing
+- `.deb` installer for apt-based distributions
+- Linux-specific overlay/orb behavior
+- X11-focused input and window handling
 
-Built for **vibe coders** who want to dictate prompts to AI tools faster than they can type.
+## Install A Linux Test Build
 
----
+If a release artifact is available, download either:
 
-## Features
+- `Jazz-*.AppImage` - run directly, no install
+- `jazz_*_amd64.deb` - install with apt/dpkg
 
-| Feature | Status |
-|---------|--------|
-| `Ctrl+Win` push-to-talk | ✅ v1 |
-| Works in every Windows app | ✅ v1 |
-| 100% offline / on-device AI | ✅ v1 |
-| Filler word removal | ✅ v1 |
-| Auto punctuation | ✅ v1 |
-| Personal dictionary | ✅ v1 |
-| System tray app | ✅ v1 |
-| Visual recording overlay | ✅ v1 |
-| Settings UI | ✅ v1 |
-| Snippet library | 🔜 v1.5 |
-| Command Mode (AI text editing) | 🔜 v1.5 |
-| NVIDIA GPU acceleration | 🔜 v2 |
-
----
-
-## Tech Stack
-
-- **Electron** + TypeScript + React + Tailwind CSS
-- **whisper.cpp** (GGML quantized models) for speech-to-text
-- **uiohook-napi** for global hotkey detection
-- **Web Audio API** (hidden renderer window) for microphone capture — no native audio addon to build
-- Zero external API calls
-
----
-
-## Quick Start (Development)
+AppImage:
 
 ```bash
-# Prerequisites: Node.js 20+, Windows 10/11 x64
-git clone <repo>
+chmod +x Jazz-*.AppImage
+./Jazz-*.AppImage
+```
+
+Debian/Ubuntu `.deb`:
+
+```bash
+sudo apt install ./jazz_*_amd64.deb
+jazz
+```
+
+## Linux Development Setup
+
+Recommended for Ubuntu/Debian-style systems:
+
+```bash
+git clone -b linux https://github.com/Turigye/jazz.git
 cd jazz
+chmod +x scripts/*.sh
+./scripts/dist-linux.sh
+```
+
+The script installs system packages, installs npm dependencies, builds whisper.cpp, and creates Linux installers.
+
+For NVIDIA CUDA builds:
+
+```bash
+WHISPER_CUDA=1 ./scripts/dist-linux.sh
+```
+
+For CPU builds, run the script without `WHISPER_CUDA`.
+
+## Manual Development Run
+
+```bash
 npm install
+npm run setup:whisper
 npm run dev
 ```
 
-On first launch, Jazz will download the `ggml-small.en-q5_1` model (~190 MB).
-
----
-
-## Build Installer
+If a native module rebuild is needed:
 
 ```bash
-npm run build
-npm run dist
-# → dist/Jazz-Setup-1.0.0.exe
+npm run rebuild:native
 ```
 
----
+## Build Linux Installers
+
+```bash
+npm run make:icon
+npm run build
+npm run dist
+```
+
+Expected output under `dist-installer/`:
+
+- `Jazz-*.AppImage`
+- `jazz_*_amd64.deb`
+
+## Linux Orb Test Checklist
+
+Before calling a Linux build good, test this specifically:
+
+1. Start with only one Jazz instance running.
+2. Hover around the orb edges: cursor should not show resize handles.
+3. Click the orb once: recording should toggle.
+4. Click and hold the orb for at least 6 seconds without moving: it should not drift upward, grow, or swallow clicks away from the orb.
+5. Drag the orb and release: it should follow the cursor, stop immediately on release, and remain compact.
+6. Click below and around the orb: transparent space must not block other apps.
+7. Dictate into Cursor, a browser text box, and a terminal-safe text field.
+
+## Linux Notes
+
+- X11 is the primary tested path.
+- Wayland behavior can vary by desktop environment because global input and injection are restricted differently.
+- The Linux orb intentionally avoids extra shadow or transparent padding around the visible button.
+- Fractional scaling must not cause the overlay window to grow.
 
 ## Documentation
 
-- [`docs/ROADMAP.md`](docs/ROADMAP.md) — **What's next** (queued features, not yet shipped)
-- [`docs/PRD.md`](docs/PRD.md) — Product Requirements Document
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Technical Architecture
-- [`docs/PLAN.md`](docs/PLAN.md) — Phased Execution Plan
-- [`docs/RESEARCH.md`](docs/RESEARCH.md) — Research Notes & References
-
----
+- [`docs/SETUP.md`](docs/SETUP.md) - Platform setup and packaging notes
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) - Technical architecture
+- [`docs/ROADMAP.md`](docs/ROADMAP.md) - Planned work
 
 ## Privacy
 
-Jazz is designed to be maximally private:
-- All audio is processed on-device using local AI models
-- No telemetry, no analytics, no data collection
-- No internet connection required after model download
-- Audio buffers are held in memory only and never written to permanent storage
-
----
-
-## Inspiration
-
-Jazz is a personal clone of [Wispr Flow](https://wisprflow.ai/), built to replicate its core experience without cloud dependency or subscription cost.
-
----
-
-*Jazz — speak your code into existence.*
+Jazz runs locally. No cloud transcription, no telemetry, and no external API key is required.
