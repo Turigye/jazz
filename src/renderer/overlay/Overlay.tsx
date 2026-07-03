@@ -10,7 +10,7 @@ const MODEL_BADGE: Record<ModelSize, string> = {
   'medium.en': 'medium',
   'large-v3-turbo-q5_0': 'turbo-q5',
   'large-v3-turbo-q8_0': 'turbo-q8',
-  'large-v3-turbo': 'turbo-gpu'
+  'large-v3-turbo': 'turbo'
 }
 
 function fmtElapsed(ms: number): string {
@@ -41,10 +41,39 @@ export default function Overlay(): JSX.Element {
   const dragging = useRef(false)
   const moved = useRef(0)
   const lastPt = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+  const pillRef = useRef<HTMLDivElement>(null)
+  const interactive = useRef(false)
 
   useEffect(() => {
     void window.jazz.getConfig().then(setConfig)
   }, [])
+
+  // The overlay window is click-through by default; only the pill should capture
+  // the mouse. The window forwards mousemove even while ignoring clicks, so we
+  // watch the cursor and flip interactivity on when it's over the pill and off
+  // when it leaves — letting clicks pass to the app underneath everywhere else.
+  useEffect(() => {
+    function onMove(e: MouseEvent): void {
+      // While dragging, interactivity stays pinned ON so the pill keeps
+      // receiving the pointerup that ends the drag — never toggle mid-drag.
+      if (dragging.current) return
+      const el = pillRef.current
+      if (!el) return
+      const r = el.getBoundingClientRect()
+      const inside =
+        e.clientX >= r.left - 2 && e.clientX <= r.right + 2 &&
+        e.clientY >= r.top - 2 && e.clientY <= r.bottom + 2
+      setInteractive(inside)
+    }
+    window.addEventListener('mousemove', onMove)
+    return () => window.removeEventListener('mousemove', onMove)
+  }, [])
+
+  function setInteractive(on: boolean): void {
+    if (on === interactive.current) return
+    interactive.current = on
+    window.jazz.setOverlayInteractive(on)
+  }
 
   useEffect(() => {
     return window.jazz.onOverlayState((s, t) => {
@@ -64,30 +93,40 @@ export default function Overlay(): JSX.Element {
   }, [state])
 
   function onPointerDown(e: React.PointerEvent): void {
+    if (e.button !== 0) return // left button only
     dragging.current = true
     moved.current = 0
     lastPt.current = { x: e.screenX, y: e.screenY }
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    interactive.current = true // pinned during the drag
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+    // Main follows the OS cursor natively from here — no per-move IPC.
+    window.jazz.startOverlayDrag()
   }
 
   function onPointerMove(e: React.PointerEvent): void {
     if (!dragging.current) return
-    const dx = e.screenX - lastPt.current.x
-    const dy = e.screenY - lastPt.current.y
-    if (dx === 0 && dy === 0) return
-    moved.current += Math.abs(dx) + Math.abs(dy)
+    // Only accumulate distance to tell a click from a drag; the window itself
+    // is moved by the main process, so we send nothing here.
+    moved.current += Math.abs(e.screenX - lastPt.current.x) + Math.abs(e.screenY - lastPt.current.y)
     lastPt.current = { x: e.screenX, y: e.screenY }
-    window.jazz.moveOverlayBy(dx, dy)
   }
 
-  function onPointerUp(e: React.PointerEvent): void {
+  function endDrag(e: React.PointerEvent): void {
     if (!dragging.current) return
     dragging.current = false
-    ;(e.target as HTMLElement).releasePointerCapture(e.pointerId)
+    try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId) } catch { /* already released */ }
+    window.jazz.endOverlayDrag()
     if (moved.current < OVERLAY.DRAG_THRESHOLD) {
       window.jazz.toggleListening()
-    } else {
-      window.jazz.endOverlayMove()
+    }
+    // Re-evaluate click-through against where the cursor actually ended up.
+    const el = pillRef.current
+    if (el) {
+      const r = el.getBoundingClientRect()
+      const inside =
+        e.clientX >= r.left - 2 && e.clientX <= r.right + 2 &&
+        e.clientY >= r.top - 2 && e.clientY <= r.bottom + 2
+      setInteractive(inside)
     }
   }
 
@@ -119,9 +158,11 @@ export default function Overlay(): JSX.Element {
   return (
     <div className="w-full h-full flex items-center justify-center select-none overflow-hidden">
       <div
+        ref={pillRef}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
         title="Click to toggle listening · drag to move"
         className={`animate-fade-in inline-flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-glass border cursor-pointer max-w-full ${borderClass} ${shadowClass} ${bgClass}`}
       >

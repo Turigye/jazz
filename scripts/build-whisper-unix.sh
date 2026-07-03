@@ -67,6 +67,13 @@ fi
 
 chmod +x "$DEST"/whisper-cli "$DEST"/whisper-server 2>/dev/null || true
 
+# macOS: whisper.cpp bakes rpaths pointing at the (now-deleted) build tree and
+# links siblings via @rpath. Rewrite to @loader_path so the copied binaries find
+# their dylibs with no DYLD_* env — which a hardened-runtime .app strips anyway.
+if [[ "$PLATFORM" == "macos" ]]; then
+  bash "$ROOT/scripts/fix-macos-rpaths.sh" "$DEST"
+fi
+
 echo
 echo "✔ Installed whisper.cpp binaries to $DEST"
 ls -lh "$DEST"

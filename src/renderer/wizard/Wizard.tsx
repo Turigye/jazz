@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
-import { MODELS, DEFAULT_MODEL } from '../../shared/constants'
+import { MODELS, DEFAULT_MODEL, modelLabel, modelDescription } from '../../shared/constants'
+import { formatChord, defaultHotkeys } from '../../shared/hotkey'
 import type { ModelSize, DownloadProgress } from '../../shared/types'
+
+const PTT_LABEL = formatChord(defaultHotkeys(window.jazz.platform).pushToTalk, window.jazz.platform)
 
 type Step = 'welcome' | 'pick' | 'download' | 'done'
 const STEPS: Step[] = ['welcome', 'pick', 'download', 'done']
@@ -89,11 +92,9 @@ export default function Wizard(): JSX.Element {
         const m = MODELS[id]
         const meta = PICK_META[id]
         const active = selected === id
-        const recommended = m.label.includes('★')
-        const cleanLabel = m.label
-          .replace(' ★ Recommended', '')
-          .replace(' — NVIDIA GPU', '')
-          .replace(' — CPU pick', '')
+        const label = modelLabel(id, window.jazz.platform)
+        const recommended = label.includes('★')
+        const cleanLabel = label.replace(' ★ Recommended', '')
         return (
           <button
             key={id}
@@ -122,7 +123,7 @@ export default function Wizard(): JSX.Element {
             </div>
             <div>
               <h3 className="text-label-md text-on-surface mb-1">{cleanLabel}</h3>
-              <p className="text-label-sm text-on-surface-variant font-normal leading-relaxed">{m.description}</p>
+              <p className="text-label-sm text-on-surface-variant font-normal leading-relaxed">{modelDescription(id, window.jazz.platform)}</p>
             </div>
             <div className="mt-auto pt-3 border-t border-white/10 flex flex-col gap-1.5">
               <div className="flex justify-between items-center text-label-sm">
@@ -189,8 +190,8 @@ export default function Wizard(): JSX.Element {
       </div>
       <h2 className="text-headline-md text-on-surface tracking-tight mb-3">You're ready</h2>
       <p className="text-body-md text-on-surface-variant">
-        Jazz lives in your system tray. Hold{' '}
-        <kbd className="px-1.5 py-0.5 rounded-md border border-white/10 bg-surface-container-high text-on-surface text-label-sm font-mono">Ctrl+Win</kbd>{' '}
+        Jazz lives in your {window.jazz.platform === 'darwin' ? 'menu bar' : 'system tray'}. Hold{' '}
+        <kbd className="px-1.5 py-0.5 rounded-md border border-white/10 bg-surface-container-high text-on-surface text-label-sm font-mono">{PTT_LABEL}</kbd>{' '}
         anywhere and start speaking.
       </p>
     </div>

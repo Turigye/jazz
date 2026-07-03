@@ -98,6 +98,31 @@ export const MODELS: Record<ModelSize, ModelInfo> = {
 
 export const DEFAULT_MODEL: ModelSize = 'large-v3-turbo-q5_0'
 
+// The model registry above is written for the Windows line (NVIDIA/CUDA/CPU
+// framing). On macOS whisper.cpp runs on Metal, so strip the hardware tags and
+// swap GPU-centric blurbs for Metal-accurate copy. Windows/Linux keep the
+// original text unchanged.
+export function modelLabel(id: ModelSize, platform: string): string {
+  const label = MODELS[id].label
+  if (platform !== 'darwin') return label
+  return label
+    .replace(' — CPU pick', '')
+    .replace(' — NVIDIA GPU', '')
+    .replace(' ★ Recommended', id === DEFAULT_MODEL ? ' ★ Recommended' : '')
+}
+
+export function modelDescription(id: ModelSize, platform: string): string {
+  if (platform === 'darwin') {
+    if (id === 'large-v3-turbo-q5_0')
+      return 'Quantized turbo — the accuracy-per-MB sweet spot. Fast on Apple Silicon via Metal. Multilingual. Recommended.'
+    if (id === 'large-v3-turbo')
+      return 'Full-precision turbo — top accuracy but ~1.5 GB. On Apple Silicon the Q5 above is nearly as accurate for a third of the size.'
+    if (id === 'large-v3-turbo-q8_0')
+      return 'Turbo at Q8 — a hair more accurate than Q5 for ~290 MB more. Niche.'
+  }
+  return MODELS[id].description
+}
+
 // ─── VAD (Silero) ─────────────────────────────────────────────────────────────
 // Voice activity detection model used by whisper.cpp's --vad option to trim
 // silence/noise before the encoder runs. Hosted in a sibling HF repo.
@@ -158,4 +183,8 @@ export const OVERLAY = {
   SUCCESS_VISIBLE_MS: 2000,
   // Pointer movement (px) beyond which a press is treated as a drag, not a click.
   DRAG_THRESHOLD: 5,
+  // Approx width of the visible idle pill. The window is wider than the pill to
+  // fit the recording text; clamping uses this so the *pill* (not the empty
+  // window edge) can be dragged to the screen edge.
+  ORB_VISIBLE: 92,
 }

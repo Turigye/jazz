@@ -135,8 +135,9 @@ export const IPC = {
 
   // Overlay orb interactions (renderer → main)
   TOGGLE_LISTENING: 'jazz:listen:toggle',
-  OVERLAY_MOVE_BY: 'jazz:overlay:moveby',
-  OVERLAY_MOVE_END: 'jazz:overlay:moveend',
+  OVERLAY_DRAG_START: 'jazz:overlay:dragstart',
+  OVERLAY_DRAG_END: 'jazz:overlay:dragend',
+  OVERLAY_SET_INTERACTIVE: 'jazz:overlay:interactive',
 
   // Hotkey capture (renderer asks main to record the next chord)
   CAPTURE_HOTKEY: 'jazz:hotkey:capture',

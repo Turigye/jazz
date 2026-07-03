@@ -57,6 +57,8 @@
     "files": [
       "out/**/*"
     ],
+    "npmRebuild": false,
+    "afterPack": "scripts/afterpack-sign.js",
     "extraResources": [
       {
         "from": "resources/whisper-bin",
@@ -73,6 +75,14 @@
       {
         "from": "resources/icon.png",
         "to": "icon.png"
+      },
+      {
+        "from": "resources/iconTemplate.png",
+        "to": "iconTemplate.png"
+      },
+      {
+        "from": "resources/iconTemplate@2x.png",
+        "to": "iconTemplate@2x.png"
       }
     ],
     "win": {
@@ -96,13 +106,18 @@
     },
     "mac": {
       "target": [
-        { "target": "dmg", "arch": ["x64", "arm64"] }
+        { "target": "dmg", "arch": ["arm64"] }
       ],
       "icon": "resources/icon.icns",
       "category": "public.app-category.productivity",
       "hardenedRuntime": true,
       "entitlements": "resources/entitlements.mac.plist",
-      "entitlementsInherit": "resources/entitlements.mac.plist"
+      "entitlementsInherit": "resources/entitlements.mac.plist",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Jazz transcribes your speech on-device to type it into the focused app. Audio never leaves your Mac.",
+        "NSAppleEventsUsageDescription": "Jazz sends a paste keystroke to insert the transcribed text into the app you're using.",
+        "LSUIElement": true
+      }
     },
     "linux": {
       "target": ["AppImage", "deb"],

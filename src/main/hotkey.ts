@@ -59,7 +59,7 @@ function keycodeToToken(code: number): string {
   if (code === UiohookKey.Ctrl || code === UiohookKey.CtrlRight)   return 'Ctrl'
   if (code === UiohookKey.Shift || code === UiohookKey.ShiftRight) return 'Shift'
   if (code === UiohookKey.Alt || code === UiohookKey.AltRight)     return 'Alt'
-  if (code === UiohookKey.Meta || code === UiohookKey.MetaRight)   return 'Win'
+  if (code === UiohookKey.Meta || code === UiohookKey.MetaRight)   return process.platform === 'darwin' ? 'Cmd' : 'Win'
   if (code === UiohookKey.Space)                                    return 'Space'
   const fIdx = (F_KEYS as number[]).indexOf(code)
   if (fIdx >= 0) return `F${fIdx + 1}`
@@ -70,8 +70,8 @@ function keycodeToToken(code: number): string {
   return ''
 }
 
-/** Canonical order: Ctrl, Shift, Alt, Win, then non-modifier key. */
-const TOKEN_ORDER = ['Ctrl', 'Shift', 'Alt', 'Win']
+/** Canonical order: Ctrl, Shift, Alt, Win/Cmd, then non-modifier key. */
+const TOKEN_ORDER = ['Ctrl', 'Shift', 'Alt', 'Win', 'Cmd']
 
 function serializeHeldChord(held: Set<number>): string {
   const tokens = new Set<string>()
@@ -120,7 +120,8 @@ export class HotkeyManager extends EventEmitter {
   /** (Re)read hotkey config and update chord definitions. */
   reload(): void {
     const config = getConfig()
-    this.ptt = parseChord(config.pushToTalkHotkey) ?? parseChord('Ctrl+Win')
+    const fallbackPtt = process.platform === 'darwin' ? 'Ctrl+Cmd' : 'Ctrl+Win'
+    this.ptt = parseChord(config.pushToTalkHotkey) ?? parseChord(fallbackPtt)
     this.toggle = parseChord(config.commandModeHotkey) ?? parseChord('Ctrl+Alt')
     log.info(`hotkey: PTT=${config.pushToTalkHotkey} · toggle=${config.commandModeHotkey}`)
   }

@@ -7,6 +7,10 @@ import type { JazzConfig, ModelSize, TranscriptRecord, ModelStatus } from '../sh
 // nodeIntegration is OFF in all renderer windows.
 
 const jazzAPI = {
+  // Host platform ('darwin' | 'win32' | 'linux') so the UI can label hotkeys
+  // and adapt copy without a round-trip to main.
+  platform: process.platform,
+
   // ── Config ────────────────────────────────────────────────────────────────
   getConfig: (): Promise<JazzConfig> =>
     ipcRenderer.invoke(IPC.GET_CONFIG),
@@ -105,11 +109,14 @@ const jazzAPI = {
   toggleListening: (): void =>
     ipcRenderer.send(IPC.TOGGLE_LISTENING),
 
-  moveOverlayBy: (dx: number, dy: number): void =>
-    ipcRenderer.send(IPC.OVERLAY_MOVE_BY, dx, dy),
+  startOverlayDrag: (): void =>
+    ipcRenderer.send(IPC.OVERLAY_DRAG_START),
 
-  endOverlayMove: (): void =>
-    ipcRenderer.send(IPC.OVERLAY_MOVE_END),
+  endOverlayDrag: (): void =>
+    ipcRenderer.send(IPC.OVERLAY_DRAG_END),
+
+  setOverlayInteractive: (interactive: boolean): void =>
+    ipcRenderer.send(IPC.OVERLAY_SET_INTERACTIVE, interactive),
 
   // ── Hotkey capture ────────────────────────────────────────────────────────
   captureHotkey: (): Promise<string> =>

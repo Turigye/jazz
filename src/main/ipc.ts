@@ -6,7 +6,7 @@ import { downloadModel, cancelDownload, modelsStatus } from './stt/models'
 import { whisperServer } from './stt/server'
 import { getTranscripts, clearTranscripts, getTranscript } from './transcripts'
 import { injectText } from './inject'
-import { broadcast, createSettingsWindow, getWizardWindow, getRecorderWindow, moveOverlayBy, persistOverlayPosition, showOverlay, hideOverlay } from './windows'
+import { broadcast, createSettingsWindow, getWizardWindow, getRecorderWindow, startOverlayDrag, endOverlayDrag, setOverlayInteractive, showOverlay, hideOverlay } from './windows'
 import { onToggleListening } from './pipeline'
 import { hotkeyManager } from './hotkey'
 import log from './logger'
@@ -58,8 +58,9 @@ export function registerIpc(): void {
 
   // Orb interactions
   ipcMain.on(IPC.TOGGLE_LISTENING, () => onToggleListening())
-  ipcMain.on(IPC.OVERLAY_MOVE_BY, (_e, dx: number, dy: number) => moveOverlayBy(dx, dy))
-  ipcMain.on(IPC.OVERLAY_MOVE_END, () => persistOverlayPosition())
+  ipcMain.on(IPC.OVERLAY_DRAG_START, () => startOverlayDrag())
+  ipcMain.on(IPC.OVERLAY_DRAG_END, () => endOverlayDrag())
+  ipcMain.on(IPC.OVERLAY_SET_INTERACTIVE, (_e, interactive: boolean) => setOverlayInteractive(interactive))
 
   ipcMain.handle(IPC.GET_TRANSCRIPTS, () => getTranscripts())
   ipcMain.handle(IPC.CLEAR_TRANSCRIPTS, () => clearTranscripts())

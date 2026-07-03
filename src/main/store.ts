@@ -3,6 +3,9 @@ import { app } from 'electron'
 import path from 'path'
 import type { JazzConfig } from '../shared/types'
 import { DEFAULT_MODEL } from '../shared/constants'
+import { defaultHotkeys } from '../shared/hotkey'
+
+const HOTKEYS = defaultHotkeys(process.platform)
 
 const schema = {
   launchAtStartup: { type: 'boolean', default: false },
@@ -15,8 +18,8 @@ const schema = {
     type: 'string',
     default: ''  // resolved below after app ready
   },
-  pushToTalkHotkey: { type: 'string', default: 'Ctrl+Win' },
-  commandModeHotkey: { type: 'string', default: 'Ctrl+Win+Alt' },
+  pushToTalkHotkey: { type: 'string', default: HOTKEYS.pushToTalk },
+  commandModeHotkey: { type: 'string', default: HOTKEYS.toggle },
   vocabulary: { type: 'string', default: '' },
   beamSearch: { type: 'boolean', default: true },
   useVAD: { type: 'boolean', default: true },
@@ -38,6 +41,23 @@ export function initStore(): void {
   if (!store.get('modelDirectory')) {
     const modelsDir = path.join(app.getPath('userData'), 'models')
     store.set('modelDirectory', modelsDir)
+  }
+  migrateHotkeysForPlatform()
+}
+
+/**
+ * A config created on Windows (or by an older build) stores 'Ctrl+Win' /
+ * 'Ctrl+Win+Alt'. Those still function on macOS (Win==Cmd), but read wrong in
+ * the UI. Relabel the known Windows defaults to their Mac equivalents once.
+ */
+function migrateHotkeysForPlatform(): void {
+  if (process.platform !== 'darwin') return
+  if (store.get('pushToTalkHotkey') === 'Ctrl+Win') {
+    store.set('pushToTalkHotkey', HOTKEYS.pushToTalk)
+  }
+  const toggle = store.get('commandModeHotkey')
+  if (toggle === 'Ctrl+Win+Alt' || toggle === 'Ctrl+Alt+Win') {
+    store.set('commandModeHotkey', HOTKEYS.toggle)
   }
 }
 

@@ -10,6 +10,8 @@ import { createOverlayWindow, createWizardWindow, createSettingsWindow, createRe
 import { sttEngine } from './stt/engine'
 import { anyModelInstalled } from './stt/models'
 import { whisperServer } from './stt/server'
+import { ensureMicrophoneAccess, whenAccessibilityReady } from './permissions'
+import { formatChord } from '../shared/hotkey'
 import log from './logger'
 
 // ─── Crash safety: log uncaught errors but never block the user with a modal.
@@ -52,6 +54,10 @@ function bootstrap(): void {
       cb(permission === 'media')
     })
 
+    // macOS: proactively request the OS-level mic (TCC) grant now, so the first
+    // dictation doesn't silently capture nothing. No-op on Windows/Linux.
+    void ensureMicrophoneAccess()
+
     // Apply persisted login-item preference.
     app.setLoginItemSettings({ openAtLogin: getConfig().launchAtStartup })
 
@@ -74,7 +80,15 @@ function bootstrap(): void {
       onToggleListening()
       refreshTrayMenu()
     })
-    hotkeyManager.start()
+
+    // macOS needs Accessibility permission before uiohook can register a global
+    // hotkey. Start immediately when it's already granted; otherwise prompt,
+    // deep-link to Settings, and start the moment the user grants it. On
+    // Windows/Linux this starts right away.
+    whenAccessibilityReady(
+      () => hotkeyManager.start(),
+      formatChord(getConfig().pushToTalkHotkey, process.platform)
+    )
 
     // First-run wizard if no model is installed yet.
     if (isFirstRun() || !anyModelInstalled()) {

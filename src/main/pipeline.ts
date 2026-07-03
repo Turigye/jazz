@@ -9,6 +9,7 @@ import { injectText } from './inject'
 import { addTranscript } from './transcripts'
 import { getConfig } from './store'
 import { broadcast } from './windows'
+import { refreshTrayMenu } from './tray'
 import { muteSystem, restoreSystem } from './audioduck'
 import log from './logger'
 
@@ -87,6 +88,7 @@ async function finishCapture(): Promise<void> {
 
     const record = addTranscript(clean, raw, durationMs)
     broadcast(IPC.TRANSCRIPT_ADDED, record)
+    refreshTrayMenu() // keep the tray's Recent submenu in sync
 
     setState('success', clean)
     flashIdle(OVERLAY.SUCCESS_VISIBLE_MS)

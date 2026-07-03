@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react'
 import { useConfig } from './useConfig'
-import { MODELS, APP_VERSION } from '../../shared/constants'
+import { MODELS, APP_VERSION, modelLabel } from '../../shared/constants'
+import { keyLabel, formatChord, defaultHotkeys } from '../../shared/hotkey'
 import type {
   ModelSize, ModelStatus, DownloadProgress,
   DictionaryEntry, SnippetEntry, TranscriptRecord
 } from '../../shared/types'
+
+const PLATFORM = window.jazz.platform
+const IS_MAC = PLATFORM === 'darwin'
+const HOTKEYS = defaultHotkeys(PLATFORM)
 
 type Tab = 'general' | 'model' | 'hotkeys' | 'dictionary' | 'snippets' | 'transcripts' | 'about'
 
@@ -95,8 +100,8 @@ function ChordDisplay({ chord }: { chord: string }): JSX.Element {
     <div className="flex items-center gap-1">
       {parts.map((p, i) => (
         <span key={i} className="flex items-center gap-1">
-          <KbdChip>{p}</KbdChip>
-          {i < parts.length - 1 && <span className="text-on-surface-variant text-label-sm">+</span>}
+          <KbdChip>{keyLabel(p, PLATFORM)}</KbdChip>
+          {i < parts.length - 1 && !IS_MAC && <span className="text-on-surface-variant text-label-sm">+</span>}
         </span>
       ))}
     </div>
@@ -113,7 +118,7 @@ function GeneralTab(): JSX.Element {
       <PageHeader title="General" />
       <SectionHeader>Application</SectionHeader>
       <div className="space-y-2 mb-8">
-        <Row title="Launch on startup" hint="Automatically start Jazz when you log into Windows."
+        <Row title="Launch on startup" hint={`Automatically start Jazz when you log in${IS_MAC ? '' : ' to Windows'}.`}
           control={<Toggle checked={config.launchAtStartup} onChange={(v) => update({ launchAtStartup: v })} />} />
         <Row title="Show floating orb" hint="Always-visible orb — click to toggle listening, drag to move."
           control={<Toggle checked={config.showOverlay} onChange={(v) => update({ showOverlay: v })} />} />
@@ -124,7 +129,9 @@ function GeneralTab(): JSX.Element {
       <SectionHeader>Hardware</SectionHeader>
       <div className="space-y-2 mb-8">
         <Row title="Use GPU acceleration"
-          hint="Run whisper on your NVIDIA GPU when available (10–20× faster). Turn off to force CPU."
+          hint={IS_MAC
+            ? 'Run whisper on your Mac’s GPU via Metal (much faster). Turn off to force CPU.'
+            : 'Run whisper on your NVIDIA GPU when available (10–20× faster). Turn off to force CPU.'}
           control={<Toggle checked={config.useGPU} onChange={(v) => update({ useGPU: v })} />} />
       </div>
 
@@ -220,11 +227,9 @@ function ModelTab(): JSX.Element {
           const m = MODELS[id]
           const active = config.activeModel === id
           const have = installed(id)
-          const recommended = m.label.includes('★')
-          const cleanLabel = m.label
-            .replace(' ★ Recommended', '')
-            .replace(' — NVIDIA GPU', '')
-            .replace(' — CPU pick', '')
+          const label = modelLabel(id, PLATFORM)
+          const recommended = label.includes('★')
+          const cleanLabel = label.replace(' ★ Recommended', '')
           return (
             <li
               key={id}
@@ -391,23 +396,23 @@ function HotkeysTab(): JSX.Element {
   if (!config) return <></>
   return (
     <div>
-      <PageHeader title="Hotkeys" subtitle="Keyboard shortcuts for hands-free dictation. Modifier-only combos (Ctrl/Shift/Alt/Win) work best." />
+      <PageHeader title="Hotkeys" subtitle={`Keyboard shortcuts for hands-free dictation. Modifier-only combos (${IS_MAC ? '⌃⇧⌥⌘' : 'Ctrl/Shift/Alt/Win'}) work best.`} />
       <div className="space-y-2">
         <HotkeyRebind
           label="Push to talk · hold to record, release to transcribe"
           current={config.pushToTalkHotkey}
-          defaultChord="Ctrl+Win"
+          defaultChord={HOTKEYS.pushToTalk}
           onSave={(chord) => void update({ pushToTalkHotkey: chord })}
         />
         <HotkeyRebind
           label="Toggle listening · tap once to start, tap again to stop"
           current={config.commandModeHotkey}
-          defaultChord="Ctrl+Alt"
+          defaultChord={HOTKEYS.toggle}
           onSave={(chord) => void update({ commandModeHotkey: chord })}
         />
       </div>
       <p className="mt-6 text-label-sm text-on-surface-variant">
-        Tip: pure-modifier combos (e.g. Ctrl+Win) never type stray characters into the focused app.
+        Tip: pure-modifier combos (e.g. {formatChord(HOTKEYS.pushToTalk, PLATFORM)}) never type stray characters into the focused app.
         Function keys (F1–F12) and Space work too.
       </p>
     </div>
@@ -587,7 +592,11 @@ function TranscriptsTab(): JSX.Element {
           <span className="material-symbols-outlined text-on-surface-variant text-[36px]">history</span>
           <p className="text-on-surface mt-3 mb-1">No transcripts yet</p>
           <p className="text-label-sm text-on-surface-variant">
-            Hold <KbdChip>Ctrl</KbdChip> <span className="mx-0.5">+</span> <KbdChip>Win</KbdChip> anywhere and start speaking.
+            Hold {HOTKEYS.pushToTalk.split('+').map((t, i, arr) => (
+              <span key={i}>
+                <KbdChip>{keyLabel(t, PLATFORM)}</KbdChip>{i < arr.length - 1 && !IS_MAC && <span className="mx-0.5">+</span>}{' '}
+              </span>
+            ))}anywhere and start speaking.
           </p>
         </div>
       ) : (
@@ -646,10 +655,10 @@ function AboutTab(): JSX.Element {
       </div>
       <div className="space-y-2 mb-6">
         <Row title="Active model" control={
-          <span className="text-label-md text-on-surface">{config ? MODELS[config.activeModel].label.split(' ★')[0] : '—'}</span>
+          <span className="text-label-md text-on-surface">{config ? modelLabel(config.activeModel, PLATFORM).split(' ★')[0] : '—'}</span>
         } />
         <Row title="Speech engine" control={
-          <span className="text-label-md text-on-surface">whisper.cpp · CUDA 12</span>
+          <span className="text-label-md text-on-surface">{IS_MAC ? 'whisper.cpp · Metal' : 'whisper.cpp · CUDA 12'}</span>
         } />
       </div>
       <div className="flex gap-2">
@@ -715,7 +724,7 @@ export default function App(): JSX.Element {
           })}
         </ul>
         <div className="border-t border-white/10 pt-4 text-label-sm text-on-surface-variant/70">
-          Hold <span className="text-on-surface">{config?.pushToTalkHotkey ?? 'Ctrl+Win'}</span> to dictate.
+          Hold <span className="text-on-surface">{formatChord(config?.pushToTalkHotkey ?? HOTKEYS.pushToTalk, PLATFORM)}</span> to dictate.
         </div>
       </nav>
 

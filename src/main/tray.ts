@@ -8,7 +8,8 @@ import { injectText } from './inject'
 import { getConfig, setConfig } from './store'
 import { modelsStatus } from './stt/models'
 import { whisperServer } from './stt/server'
-import { APP_NAME, MODELS } from '../shared/constants'
+import { APP_NAME, modelLabel } from '../shared/constants'
+import { formatChord } from '../shared/hotkey'
 import type { ModelSize } from '../shared/types'
 import log from './logger'
 
@@ -47,7 +48,7 @@ function buildMenu(): Menu {
   const modelItems = installed.length === 0
     ? [{ label: 'No models installed — open Settings', enabled: false }]
     : installed.map((s) => ({
-        label: MODELS[s.id].label.replace(' ★ Recommended', ''),
+        label: modelLabel(s.id, process.platform).replace(' ★ Recommended', ''),
         type: 'radio' as const,
         checked: config.activeModel === s.id,
         click: () => {
@@ -57,8 +58,10 @@ function buildMenu(): Menu {
         }
       }))
 
+  const ptt = formatChord(config.pushToTalkHotkey, process.platform)
+  const toggle = formatChord(config.commandModeHotkey, process.platform)
   return Menu.buildFromTemplate([
-    { label: `${APP_NAME} — Ctrl+Win to dictate · Ctrl+Alt to toggle`, enabled: false },
+    { label: `${APP_NAME} — ${ptt} to dictate · ${toggle} to toggle`, enabled: false },
     { type: 'separator' },
     { label: 'Model', submenu: modelItems },
     { label: 'Recent transcripts', submenu: recentItems },
@@ -76,6 +79,11 @@ export function refreshTrayMenu(): void {
 export function createTray(): Tray {
   const p = iconPath()
   const image = p ? nativeImage.createFromPath(p) : nativeImage.createEmpty()
+  // On macOS a monochrome template image lets the menu bar tint it for
+  // light/dark mode. iconTemplate.png is already template-named, but set it
+  // explicitly so the colored icon.png fallback also renders as a silhouette
+  // rather than an over-sized blob.
+  if (process.platform === 'darwin' && !image.isEmpty()) image.setTemplateImage(true)
   tray = new Tray(image)
   tray.setToolTip(`${APP_NAME} — offline voice dictation`)
   tray.setContextMenu(buildMenu())
