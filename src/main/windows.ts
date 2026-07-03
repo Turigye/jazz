@@ -273,8 +273,8 @@ export function createWizardWindow(): BrowserWindow {
   }
 
   wizardWindow = new BrowserWindow({
-    width: 600,
-    height: 460,
+    width: 680,
+    height: 560,
     resizable: false,
     title: 'Welcome to Jazz',
     autoHideMenuBar: true,

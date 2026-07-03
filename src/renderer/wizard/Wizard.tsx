@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react'
 import { MODELS, DEFAULT_MODEL, modelLabel, modelDescription } from '../../shared/constants'
 import { formatChord, defaultHotkeys } from '../../shared/hotkey'
-import type { ModelSize, DownloadProgress } from '../../shared/types'
+import type { ModelSize, DownloadProgress, PermissionState } from '../../shared/types'
 
 const PTT_LABEL = formatChord(defaultHotkeys(window.jazz.platform).pushToTalk, window.jazz.platform)
+const IS_MAC = window.jazz.platform === 'darwin'
 
-type Step = 'welcome' | 'pick' | 'download' | 'done'
-const STEPS: Step[] = ['welcome', 'pick', 'download', 'done']
+type Step = 'welcome' | 'pick' | 'download' | 'permissions' | 'done'
+// The permissions step only exists on macOS, where mic + Accessibility are gated.
+const STEPS: Step[] = IS_MAC
+  ? ['welcome', 'pick', 'download', 'permissions', 'done']
+  : ['welcome', 'pick', 'download', 'done']
 
 const PICKABLE: ModelSize[] = ['small.en-q5_1', 'large-v3-turbo-q5_0', 'large-v3-turbo']
 
@@ -40,14 +44,28 @@ export default function Wizard(): JSX.Element {
   const [selected, setSelected] = useState<ModelSize>(DEFAULT_MODEL)
   const [progress, setProgress] = useState<DownloadProgress | null>(null)
   const [error, setError] = useState<string>('')
+  const [perms, setPerms] = useState<PermissionState | null>(null)
 
   useEffect(() => {
     return window.jazz.onDownloadProgress((p) => {
       setProgress(p)
-      if (p.phase === 'complete') setStep('done')
+      // On macOS, route through the permissions step before finishing.
+      if (p.phase === 'complete') setStep(IS_MAC ? 'permissions' : 'done')
       if (p.phase === 'error') setError(p.error ?? 'Download failed')
     })
   }, [])
+
+  // Poll permission status while on the permissions step so grants reflect live.
+  useEffect(() => {
+    if (step !== 'permissions') return
+    let alive = true
+    const tick = (): void => {
+      void window.jazz.getPermissions().then((p) => { if (alive) setPerms(p) })
+    }
+    tick()
+    const id = setInterval(tick, 1200)
+    return () => { alive = false; clearInterval(id) }
+  }, [step])
 
   async function beginDownload(): Promise<void> {
     setError('')
@@ -75,9 +93,7 @@ export default function Wizard(): JSX.Element {
       </div>
       <h2 className="text-headline-lg-mobile text-on-surface tracking-tight mb-3">Meet Jazz</h2>
       <p className="text-body-md text-on-surface-variant mb-6">
-        Hold <kbd className="px-1.5 py-0.5 rounded-md border border-white/10 bg-surface-container-high text-on-surface text-label-sm font-mono">Ctrl</kbd>{' '}
-        +{' '}
-        <kbd className="px-1.5 py-0.5 rounded-md border border-white/10 bg-surface-container-high text-on-surface text-label-sm font-mono">Win</kbd>,
+        Hold <kbd className="px-1.5 py-0.5 rounded-md border border-white/10 bg-surface-container-high text-on-surface text-label-sm font-mono">{PTT_LABEL}</kbd>,
         speak naturally, and your words are typed into any app — 100% on your machine, no cloud, no API keys.
       </p>
       <p className="text-label-sm text-on-surface-variant">
@@ -183,6 +199,59 @@ export default function Wizard(): JSX.Element {
     </div>
   )
 
+  const micGranted = perms?.microphone === 'granted'
+  const axGranted = perms?.accessibility === true
+
+  function PermRow({
+    icon, title, desc, granted, actionLabel, onAction
+  }: { icon: string; title: string; desc: string; granted: boolean; actionLabel: string; onAction: () => void }): JSX.Element {
+    return (
+      <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-surface/10 p-4">
+        <span className={`material-symbols-outlined text-[24px] ${granted ? 'text-primary' : 'text-on-surface-variant'}`}>{icon}</span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-label-md text-on-surface">{title}</h3>
+          <p className="text-label-sm text-on-surface-variant leading-relaxed">{desc}</p>
+        </div>
+        {granted ? (
+          <span className="inline-flex items-center gap-1 text-primary text-label-sm shrink-0">
+            <span className="material-symbols-outlined filled text-[18px]">check_circle</span>Granted
+          </span>
+        ) : (
+          <button onClick={onAction} className="btn-primary shrink-0">{actionLabel}</button>
+        )}
+      </div>
+    )
+  }
+
+  const Permissions = (
+    <div className="w-full max-w-lg mx-auto flex flex-col gap-3">
+      <p className="text-label-md text-on-surface-variant text-center mb-1">
+        macOS asks your permission before any app can hear you or type for you. Grant these once and Jazz is set.
+      </p>
+      <PermRow
+        icon="mic"
+        title="Microphone"
+        desc="So Jazz can hear your dictation. Audio is processed on-device and never leaves your Mac."
+        granted={micGranted}
+        actionLabel="Allow"
+        onAction={() => void window.jazz.requestMicrophone().then(() => window.jazz.getPermissions().then(setPerms))}
+      />
+      <PermRow
+        icon="accessibility_new"
+        title="Accessibility"
+        desc={`So the ${PTT_LABEL} hotkey works and Jazz can paste text into the focused app. Required by macOS for every dictation app.`}
+        granted={axGranted}
+        actionLabel="Open Settings"
+        onAction={() => window.jazz.promptAccessibility()}
+      />
+      {!axGranted && (
+        <p className="text-label-sm text-on-surface-variant text-center mt-1">
+          After flipping <span className="text-on-surface">Jazz</span> on in Settings, this updates automatically.
+        </p>
+      )}
+    </div>
+  )
+
   const Done = (
     <div className="flex flex-col items-center text-center max-w-md mx-auto">
       <div className="w-16 h-16 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center mb-5 shadow-glow">
@@ -218,6 +287,9 @@ export default function Wizard(): JSX.Element {
               </p>
             </>
           )}
+          {step === 'permissions' && (
+            <h1 className="text-headline-md text-on-surface tracking-tight mt-1">Grant permissions</h1>
+          )}
         </header>
 
         {/* Body */}
@@ -225,6 +297,7 @@ export default function Wizard(): JSX.Element {
           {step === 'welcome' && Welcome}
           {step === 'pick' && Pick}
           {step === 'download' && Download}
+          {step === 'permissions' && Permissions}
           {step === 'done' && Done}
         </section>
 
@@ -234,6 +307,7 @@ export default function Wizard(): JSX.Element {
             {step === 'welcome' && 'Welcome to Jazz'}
             {step === 'pick' && `Selected: ${MODELS[selected].label.split(' (')[0].replace(' ★ Recommended', '')}`}
             {step === 'download' && 'Downloading from Hugging Face'}
+            {step === 'permissions' && (micGranted && axGranted ? 'All set' : 'Grant to enable dictation')}
             {step === 'done' && 'Setup complete'}
           </div>
           <div className="flex gap-2">
@@ -259,6 +333,12 @@ export default function Wizard(): JSX.Element {
               <button onClick={beginDownload} className="btn-primary">
                 Retry
                 <span className="material-symbols-outlined text-[18px]">refresh</span>
+              </button>
+            )}
+            {step === 'permissions' && (
+              <button onClick={() => setStep('done')} className="btn-primary">
+                {micGranted && axGranted ? 'Continue' : 'Skip for now'}
+                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
               </button>
             )}
             {step === 'done' && (

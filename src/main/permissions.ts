@@ -1,4 +1,5 @@
 import { systemPreferences, shell, Notification } from 'electron'
+import type { PermissionState } from '../shared/types'
 import log from './logger'
 
 // macOS gates two things Jazz depends on behind user-granted permissions:
@@ -60,6 +61,30 @@ export async function ensureMicrophoneAccess(): Promise<boolean> {
     log.warn('Microphone access check failed', err)
     return true // don't block; let the capture path surface any real failure
   }
+}
+
+/** Snapshot of both permissions, for the onboarding wizard / settings UI. */
+export function getPermissions(): PermissionState {
+  if (!isMac) return { microphone: 'granted', accessibility: true, applicable: false }
+  let microphone: PermissionState['microphone'] = 'unknown'
+  try {
+    microphone = systemPreferences.getMediaAccessStatus('microphone') as PermissionState['microphone']
+  } catch (err) {
+    log.warn('mic status read failed', err)
+  }
+  return { microphone, accessibility: hasAccessibilityAccess(false), applicable: true }
+}
+
+/** Request microphone access (prompts if undecided). Returns whether granted. */
+export function requestMicrophone(): Promise<boolean> {
+  return ensureMicrophoneAccess()
+}
+
+/** Trigger the macOS Accessibility prompt and open the Settings pane. */
+export function promptAccessibility(): void {
+  if (!isMac) return
+  hasAccessibilityAccess(true) // shows the system dialog + lists the app
+  openAccessibilitySettings()
 }
 
 /**

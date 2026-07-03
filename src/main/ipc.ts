@@ -9,6 +9,7 @@ import { injectText } from './inject'
 import { broadcast, createSettingsWindow, getWizardWindow, getRecorderWindow, startOverlayDrag, endOverlayDrag, setOverlayInteractive, showOverlay, hideOverlay } from './windows'
 import { onToggleListening } from './pipeline'
 import { hotkeyManager } from './hotkey'
+import { getPermissions, requestMicrophone, promptAccessibility, openAccessibilitySettings, openMicrophoneSettings } from './permissions'
 import log from './logger'
 
 async function listMicDevices(): Promise<{ id: number; name: string }[]> {
@@ -61,6 +62,13 @@ export function registerIpc(): void {
   ipcMain.on(IPC.OVERLAY_DRAG_START, () => startOverlayDrag())
   ipcMain.on(IPC.OVERLAY_DRAG_END, () => endOverlayDrag())
   ipcMain.on(IPC.OVERLAY_SET_INTERACTIVE, (_e, interactive: boolean) => setOverlayInteractive(interactive))
+
+  // Permissions (macOS onboarding)
+  ipcMain.handle(IPC.GET_PERMISSIONS, () => getPermissions())
+  ipcMain.handle(IPC.REQUEST_MIC, () => requestMicrophone())
+  ipcMain.on(IPC.PROMPT_ACCESSIBILITY, () => promptAccessibility())
+  ipcMain.on(IPC.OPEN_ACCESSIBILITY_SETTINGS, () => openAccessibilitySettings())
+  ipcMain.on(IPC.OPEN_MIC_SETTINGS, () => openMicrophoneSettings())
 
   ipcMain.handle(IPC.GET_TRANSCRIPTS, () => getTranscripts())
   ipcMain.handle(IPC.CLEAR_TRANSCRIPTS, () => clearTranscripts())

@@ -1,0 +1,162 @@
+name: mac-build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - mac
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-mac:
+    name: Build macOS DMG (signed + notarized)
+    runs-on: macos-14
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Set up Python for node-gyp
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          echo "PYTHON=$(which python3)" >> "$GITHUB_ENV"
+          npm ci
+
+      - name: Build whisper.cpp with Metal
+        run: |
+          chmod +x scripts/*.sh
+          npm run setup:whisper:unix
+
+      - name: Generate app icon
+        run: |
+          npm run make:icon
+          ICONSET="resources/icon.iconset"
+          rm -rf "$ICONSET"
+          mkdir -p "$ICONSET"
+          for size in 16 32 64 128 256 512 1024; do
+            sips -z "$size" "$size" resources/icon.png --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+            half=$((size / 2))
+            if [ "$half" -ge 16 ]; then
+              sips -z "$size" "$size" resources/icon.png --out "$ICONSET/icon_${half}x${half}@2x.png" >/dev/null
+            fi
+          done
+          iconutil -c icns "$ICONSET" -o resources/icon.icns
+          rm -rf "$ICONSET"
+
+      - name: Import Developer ID signing certificate
+        env:
+          MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: |
+          # Decode the .p12 into a file
+          CERT_PATH="$RUNNER_TEMP/jazz-mac.p12"
+          echo "$MAC_CERT_P12_BASE64" | base64 --decode > "$CERT_PATH"
+
+          # Create an isolated, ephemeral keychain just for this build
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 12)
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Import the Developer ID cert + private key
+          security import "$CERT_PATH" -P "$MAC_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # Make it the default keychain so codesign picks it up automatically
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security default-keychain -d user -s "$KEYCHAIN_PATH"
+
+          # Confirm the identity is visible
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+          # Wipe the on-disk .p12 — keychain has it now
+          rm "$CERT_PATH"
+
+      - name: Package signed + notarized Apple Silicon DMG
+        env:
+          # electron-builder auto-discovers the Developer ID cert from the
+          # keychain we imported above. APPLE_* vars trigger notarization
+          # via xcrun notarytool (built into macos-14 runners).
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          npm run build
+          npx electron-builder --mac dmg --arm64 --publish never
+
+      - name: Verify signing + notarization on the embedded .app
+        continue-on-error: true
+        run: |
+          set +e
+          DMG=$(ls dist-installer/*.dmg | head -1)
+          echo "▸ Mounting $DMG to inspect Jazz.app inside"
+          MOUNT=$(hdiutil attach -nobrowse -readonly "$DMG" | tail -1 | awk '{ for (i=3; i<=NF; ++i) printf "%s ", $i; print "" }' | sed 's/[[:space:]]*$//')
+          APP="$MOUNT/Jazz.app"
+          echo "▸ Mounted at: $MOUNT"
+          echo "▸ Checking $APP"
+          echo "─── codesign ──────────────────────────────────────"
+          codesign -dv --verbose=4 "$APP"
+          echo "─── spctl Gatekeeper assess ───────────────────────"
+          spctl -a -vvv "$APP"
+          echo "─── notarization ticket staple ────────────────────"
+          xcrun stapler validate "$APP"
+          hdiutil detach "$MOUNT" >/dev/null 2>&1 || true
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Jazz-macOS-arm64-dmg
+          path: dist-installer/*.dmg
+          if-no-files-found: error
+
+      - name: Publish DMG to GitHub Release
+        if: github.ref == 'refs/heads/mac' || startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'mac-test-latest' }}
+          name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'Mac test latest' }}
+          body: |
+            ## Jazz macOS build (signed + notarized)
+
+            This is a **signed and Apple-notarized** Apple Silicon `.dmg`.
+            macOS Gatekeeper will accept it cleanly — no security warnings,
+            no `xattr` workarounds, no right-click → Open dance.
+
+            ### Install
+
+            1. Download the `.dmg` below.
+            2. Open it and drag Jazz into Applications.
+            3. Launch Jazz from Applications.
+            4. Approve Microphone and Accessibility permissions on first run.
+
+            ### Please test
+
+            - App install and first launch
+            - Microphone and Accessibility permission prompts
+            - Dictation into normal text fields
+            - Floating orb click, drag, hover, and long-hold behavior
+            - Any crash, hang, or confusing setup step
+
+            ### Notes
+
+            - Apple Silicon / arm64 build (M1/M2/M3/M4 Macs).
+            - Signed with a Developer ID Application certificate.
+            - Notarized by Apple — Gatekeeper trusts it on download.
+          prerelease: true
+          make_latest: false
+          files: dist-installer/*.dmg

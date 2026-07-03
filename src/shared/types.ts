@@ -95,6 +95,14 @@ export interface DownloadProgress {
   error?: string
 }
 
+// macOS permission snapshot for the onboarding wizard / settings UI.
+export interface PermissionState {
+  microphone: 'granted' | 'denied' | 'not-determined' | 'restricted' | 'unknown'
+  accessibility: boolean
+  /** Whether these gates apply on this OS at all (false on Windows/Linux). */
+  applicable: boolean
+}
+
 // ─── IPC Channel Names ────────────────────────────────────────────────────────
 
 export const IPC = {
@@ -142,6 +150,13 @@ export const IPC = {
   // Hotkey capture (renderer asks main to record the next chord)
   CAPTURE_HOTKEY: 'jazz:hotkey:capture',
   CANCEL_CAPTURE_HOTKEY: 'jazz:hotkey:capture:cancel',
+
+  // Permissions (macOS mic + Accessibility onboarding)
+  GET_PERMISSIONS: 'jazz:perm:get',
+  REQUEST_MIC: 'jazz:perm:mic',
+  PROMPT_ACCESSIBILITY: 'jazz:perm:accessibility',
+  OPEN_ACCESSIBILITY_SETTINGS: 'jazz:perm:accessibility:open',
+  OPEN_MIC_SETTINGS: 'jazz:perm:mic:open',
 
   // Clipboard — bypass the renderer's clipboard API permission gate
   WRITE_CLIPBOARD: 'jazz:clipboard:write',

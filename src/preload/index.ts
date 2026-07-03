@@ -118,6 +118,22 @@ const jazzAPI = {
   setOverlayInteractive: (interactive: boolean): void =>
     ipcRenderer.send(IPC.OVERLAY_SET_INTERACTIVE, interactive),
 
+  // ── Permissions (macOS) ────────────────────────────────────────────────────
+  getPermissions: (): Promise<import('../shared/types').PermissionState> =>
+    ipcRenderer.invoke(IPC.GET_PERMISSIONS),
+
+  requestMicrophone: (): Promise<boolean> =>
+    ipcRenderer.invoke(IPC.REQUEST_MIC),
+
+  promptAccessibility: (): void =>
+    ipcRenderer.send(IPC.PROMPT_ACCESSIBILITY),
+
+  openAccessibilitySettings: (): void =>
+    ipcRenderer.send(IPC.OPEN_ACCESSIBILITY_SETTINGS),
+
+  openMicrophoneSettings: (): void =>
+    ipcRenderer.send(IPC.OPEN_MIC_SETTINGS),
+
   // ── Hotkey capture ────────────────────────────────────────────────────────
   captureHotkey: (): Promise<string> =>
     ipcRenderer.invoke(IPC.CAPTURE_HOTKEY),
