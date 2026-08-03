@@ -109,6 +109,8 @@ export const IPC = {
   // Main → Renderer (overlay)
   OVERLAY_STATE: 'jazz:overlay:state',
   OVERLAY_TEXT: 'jazz:overlay:text',
+  /** Live input level (0..1 RMS), forwarded to the overlay to drive the meter. */
+  OVERLAY_LEVEL: 'jazz:overlay:level',
 
   // Main → Renderer (any)
   DOWNLOAD_PROGRESS: 'jazz:download:progress',
@@ -140,6 +142,8 @@ export const IPC = {
   REC_STOP: 'jazz:rec:stop',
   REC_DATA: 'jazz:rec:data',
   REC_ERROR: 'jazz:rec:error',
+  /** Per-buffer RMS emitted while capturing, so the meter shows real signal. */
+  REC_LEVEL: 'jazz:rec:level',
 
   // Overlay orb interactions (renderer → main)
   TOGGLE_LISTENING: 'jazz:listen:toggle',

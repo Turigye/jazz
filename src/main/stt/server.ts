@@ -43,11 +43,21 @@ export function killOrphanServers(): void {
   if (process.platform === 'win32') return
   const bin = resolveBinary()
   if (!bin) return
-  execFile('pgrep', ['-f', bin], (err, stdout) => {
+  // Match on the binary NAME, then confirm the full path in JS. Passing the
+  // resolved path straight to `pgrep -f` would treat it as an extended regex,
+  // where every '.' matches any character — a fuzzy match deciding what to
+  // SIGKILL. Exact string comparison is the only safe test here.
+  execFile('pgrep', ['-a', '-f', 'whisper-server'], (err, stdout) => {
     if (err) return // no matches, or pgrep unavailable — nothing to do
-    for (const raw of stdout.split('\n')) {
-      const pid = parseInt(raw.trim(), 10)
+    for (const line of stdout.split('\n')) {
+      const sep = line.indexOf(' ')
+      if (sep < 1) continue
+      const pid = parseInt(line.slice(0, sep), 10)
+      const cmd = line.slice(sep + 1)
       if (!Number.isFinite(pid) || pid === process.pid) continue
+      // Only ours: same bundle, same path. A second Jazz running from a
+      // different location (a dev build) must be left alone.
+      if (!cmd.includes(bin)) continue
       log.warn(`Killing orphaned whisper-server from a previous session (pid=${pid})`)
       try { process.kill(pid, 'SIGKILL') } catch (killErr) { log.warn(`Failed to kill orphan pid=${pid}`, killErr) }
     }

@@ -14,6 +14,26 @@ function appIcon(): string | undefined {
   return existsSync(p) ? p : undefined
 }
 
+/**
+ * Frosted-glass backdrop options for the settings and wizard windows.
+ *
+ * `backgroundMaterial: 'acrylic'` is a Windows 11 API — on macOS it is
+ * silently ignored, so the Mac build was rendering its translucent surfaces
+ * against flat black and the frosted effect the CSS is designed around never
+ * appeared. macOS needs `vibrancy` instead; `visualEffectState: 'active'`
+ * keeps the blur alive even when the window isn't focused, which matters here
+ * because Jazz windows routinely sit behind whatever you're dictating into.
+ */
+function backdropOptions(): Partial<Electron.BrowserWindowConstructorOptions> {
+  if (process.platform === 'darwin') {
+    return { vibrancy: 'under-window', visualEffectState: 'active' }
+  }
+  if (process.platform === 'win32') {
+    return { backgroundMaterial: 'acrylic' }
+  }
+  return {}
+}
+
 let overlayWindow: BrowserWindow | null = null
 let settingsWindow: BrowserWindow | null = null
 let wizardWindow: BrowserWindow | null = null
@@ -233,9 +253,7 @@ export function createSettingsWindow(): BrowserWindow {
     autoHideMenuBar: true,
     show: false,
     icon: appIcon(),
-    // Windows 11 acrylic = real frosted-glass behind the window.
-    // The body CSS uses translucent surfaces so the acrylic shows through.
-    backgroundMaterial: 'acrylic',
+    ...backdropOptions(),
     backgroundColor: '#00000000',
     webPreferences: {
       preload: preloadPath,
@@ -280,7 +298,7 @@ export function createWizardWindow(): BrowserWindow {
     autoHideMenuBar: true,
     show: false,
     icon: appIcon(),
-    backgroundMaterial: 'acrylic',
+    ...backdropOptions(),
     backgroundColor: '#00000000',
     webPreferences: {
       preload: preloadPath,
@@ -346,6 +364,17 @@ export function recreateRecorderWindow(): BrowserWindow {
   }
   recorderWindow = null
   return createRecorderWindow()
+}
+
+/**
+ * Send to the overlay only, without logging. Used for the live input level,
+ * which arrives ~12×/second while recording — `broadcast` would fan it out to
+ * windows that don't care and write a debug line for every buffer.
+ */
+export function sendToOverlay(channel: string, ...args: unknown[]): void {
+  if (overlayWindow && !overlayWindow.isDestroyed()) {
+    overlayWindow.webContents.send(channel, ...args)
+  }
 }
 
 /** Broadcast a message to every live window. */

@@ -105,6 +105,17 @@ const jazzAPI = {
   sendRecorderError: (message: string): void =>
     ipcRenderer.send(IPC.REC_ERROR, message),
 
+  /** Recorder → main: RMS of the buffer just captured (0..1). */
+  sendLevel: (rms: number): void =>
+    ipcRenderer.send(IPC.REC_LEVEL, rms),
+
+  /** Overlay ← main: live input level, for the meter. */
+  onLevel: (cb: (rms: number) => void): (() => void) => {
+    const handler = (_: Electron.IpcRendererEvent, rms: number): void => cb(rms)
+    ipcRenderer.on(IPC.OVERLAY_LEVEL, handler)
+    return () => ipcRenderer.removeListener(IPC.OVERLAY_LEVEL, handler)
+  },
+
   // ── Overlay orb ────────────────────────────────────────────────────────────
   toggleListening: (): void =>
     ipcRenderer.send(IPC.TOGGLE_LISTENING),

@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import { IPC } from '../shared/types'
-import { getRecorderWindow, recreateRecorderWindow } from './windows'
+import { getRecorderWindow, recreateRecorderWindow, sendToOverlay } from './windows'
 import log from './logger'
 
 export interface MicDevice {
@@ -26,6 +26,11 @@ export class AudioCapture {
     ipcMain.on(IPC.REC_ERROR, (_e, message: string) => {
       log.error('Recorder error', message)
       this.resolve(Buffer.alloc(0))
+    })
+    // Relay live input level straight through to the overlay's meter. Not
+    // logged — this fires for every audio buffer while recording.
+    ipcMain.on(IPC.REC_LEVEL, (_e, rms: number) => {
+      sendToOverlay(IPC.OVERLAY_LEVEL, rms)
     })
   }
 

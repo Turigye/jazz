@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { JazzState, JazzConfig, ModelSize } from '../../shared/types'
 import { OVERLAY } from '../../shared/constants'
+import VuMeter from './VuMeter'
 
 const MODEL_BADGE: Record<ModelSize, string> = {
   'tiny.en': 'tiny',
@@ -18,17 +19,10 @@ function fmtElapsed(ms: number): string {
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 }
 
-function Waveform(): JSX.Element {
-  return (
-    <div className="flex items-center gap-[3px] h-4 mx-1">
-      <div className="w-[2px] bg-primary rounded-full animate-wave-1" />
-      <div className="w-[2px] bg-primary rounded-full animate-wave-2" />
-      <div className="w-[2px] bg-primary rounded-full animate-wave-3" />
-      <div className="w-[2px] bg-primary rounded-full animate-wave-4" />
-      <div className="w-[2px] bg-primary rounded-full animate-wave-5" />
-    </div>
-  )
-}
+/** Machined housing the modules sit in — dark panel, lit top edge, brass rim. */
+const HOUSING =
+  'inline-flex items-center rounded-lg border shadow-plate backdrop-blur-glass ' +
+  'cursor-pointer max-w-full animate-fade-in select-none'
 
 export default function Overlay(): JSX.Element {
   const [state, setState] = useState<JazzState>('idle')
@@ -36,6 +30,12 @@ export default function Overlay(): JSX.Element {
   const [config, setConfig] = useState<JazzConfig | null>(null)
   const [elapsed, setElapsed] = useState<number>(0)
   const recordStart = useRef<number>(0)
+
+  // Live input level. Held in a ref and read by the meter's frame loop — this
+  // arrives ~12×/second while recording and must not drive React renders.
+  const level = useRef(0)
+  const stateRef = useRef<JazzState>('idle')
+  stateRef.current = state
 
   // Drag tracking
   const dragging = useRef(false)
@@ -48,13 +48,18 @@ export default function Overlay(): JSX.Element {
     void window.jazz.getConfig().then(setConfig)
   }, [])
 
-  // The overlay window is click-through by default; only the pill should capture
-  // the mouse. The window forwards mousemove even while ignoring clicks, so we
-  // watch the cursor and flip interactivity on when it's over the pill and off
-  // when it leaves — letting clicks pass to the app underneath everywhere else.
+  useEffect(() => {
+    return window.jazz.onLevel((rms) => { level.current = rms })
+  }, [])
+
+  // The overlay window is click-through by default; only the module should
+  // capture the mouse. The window forwards mousemove even while ignoring
+  // clicks, so we watch the cursor and flip interactivity on when it's over
+  // the module and off when it leaves — letting clicks pass to the app
+  // underneath everywhere else.
   useEffect(() => {
     function onMove(e: MouseEvent): void {
-      // While dragging, interactivity stays pinned ON so the pill keeps
+      // While dragging, interactivity stays pinned ON so the module keeps
       // receiving the pointerup that ends the drag — never toggle mid-drag.
       if (dragging.current) return
       const el = pillRef.current
@@ -131,32 +136,17 @@ export default function Overlay(): JSX.Element {
   }
 
   const modelBadge = config ? MODEL_BADGE[config.activeModel] : 'jazz'
+  const metered = state === 'recording'
 
-  // Per-state pill styling (border/shadow accents change with state).
-  const borderClass =
-    state === 'recording' || state === 'injecting'
-      ? 'border-primary/30'
-      : state === 'error'
-        ? 'border-error/30'
-        : 'border-white/10'
-
-  // Subtle lift only — no heavy halo. Violet glow stays for active states.
-  const shadowClass =
-    state === 'recording'
-      ? 'shadow-glow'
-      : state === 'injecting'
-        ? 'shadow-[0_2px_12px_rgba(196,74,240,0.18)]'
-        : state === 'error'
-          ? 'shadow-[0_2px_12px_rgba(147,0,10,0.25)]'
-          : 'shadow-[0_1px_4px_rgba(0,0,0,0.25)]'
-
-  const bgClass =
+  // Housing tone follows state. Only failure changes the rim colour — the
+  // meter itself carries every other signal, so nothing else needs to shout.
+  const housingStyle: React.CSSProperties =
     state === 'error'
-      ? 'bg-error-container/20'
-      : 'bg-surface-container/80'
+      ? { background: 'linear-gradient(180deg, #3a221c 0%, #2a1713 100%)', borderColor: '#6e2418' }
+      : { background: 'linear-gradient(180deg, #302b26 0%, #211d19 100%)', borderColor: '#5c4c2e' }
 
   return (
-    <div className="w-full h-full flex items-center justify-center select-none overflow-hidden">
+    <div className="w-full h-full flex items-center justify-center overflow-hidden">
       <div
         ref={pillRef}
         onPointerDown={onPointerDown}
@@ -164,52 +154,50 @@ export default function Overlay(): JSX.Element {
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
         title="Click to toggle listening · drag to move"
-        className={`animate-fade-in inline-flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-glass border cursor-pointer max-w-full ${borderClass} ${shadowClass} ${bgClass}`}
+        style={housingStyle}
+        className={`${HOUSING} ${metered ? 'gap-3 p-1.5 pr-3' : 'gap-2.5 px-3 py-2'}`}
       >
         {state === 'idle' && (
           <>
-            <span className="material-symbols-outlined filled text-[18px] text-on-surface">mic</span>
-            <span className="text-label-md text-on-surface">{modelBadge}</span>
+            <span className="w-[7px] h-[7px] rounded-full bg-brass-dim shrink-0" />
+            <span className="font-mono text-[10.5px] tracking-wider text-cream-dim">{modelBadge}</span>
           </>
         )}
 
-        {state === 'recording' && (
+        {metered && (
           <>
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(196,74,240,0.6)] ml-0.5" />
-            <Waveform />
-            <span className="text-label-md text-primary font-medium tabular-nums whitespace-nowrap">
-              Listening {fmtElapsed(elapsed)}
+            <VuMeter getLevel={() => level.current} getActive={() => stateRef.current === 'recording'} />
+            <span className="font-mono text-[13px] tabular-nums text-brass-bright tracking-wide whitespace-nowrap">
+              {fmtElapsed(elapsed)}
             </span>
           </>
         )}
 
         {state === 'transcribing' && (
           <>
-            <span className="material-symbols-outlined text-[18px] text-on-surface-variant animate-spin">progress_activity</span>
-            <span className="text-label-md text-on-surface-variant pr-0.5">Transcribing…</span>
+            <span className="w-[7px] h-[7px] rounded-full bg-brass animate-lamp shrink-0 shadow-[0_0_7px_1px_rgba(201,162,39,0.6)]" />
+            <span className="font-mono text-[10.5px] tracking-wider text-cream-dim">transcribing</span>
           </>
         )}
 
         {state === 'injecting' && (
           <>
-            <span className="material-symbols-outlined text-[18px] text-primary">edit_note</span>
-            <span className="text-label-md text-primary truncate max-w-[180px]">{text || 'Inserting…'}</span>
+            <span className="w-[7px] h-[7px] rounded-full bg-brass shrink-0" />
+            <span className="text-[12px] text-cream truncate max-w-[210px]">{text || 'inserting…'}</span>
           </>
         )}
 
         {state === 'success' && (
           <>
-            <span className="material-symbols-outlined filled text-[18px] text-on-surface">check_circle</span>
-            <span className="text-label-md text-on-surface truncate max-w-[180px] pr-0.5">
-              {text || 'Transcript saved'}
-            </span>
+            <span className="w-[7px] h-[7px] rounded-full bg-brass-bright shrink-0 shadow-[0_0_7px_1px_rgba(229,193,88,0.5)]" />
+            <span className="text-[12px] text-cream truncate max-w-[210px]">{text || 'saved'}</span>
           </>
         )}
 
         {state === 'error' && (
           <>
-            <span className="material-symbols-outlined filled text-[18px] text-error">warning</span>
-            <span className="text-label-md text-error pr-0.5 truncate max-w-[180px]">{text || 'Error'}</span>
+            <span className="w-[7px] h-[7px] rounded-full bg-oxide shrink-0 shadow-[0_0_7px_1px_rgba(196,68,47,0.55)]" />
+            <span className="text-[12px] text-on-error-container truncate max-w-[210px]">{text || 'error'}</span>
           </>
         )}
       </div>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Icon from '../Icon'
 import { useConfig } from './useConfig'
 import { MODELS, APP_VERSION, modelLabel } from '../../shared/constants'
 import { keyLabel, formatChord, defaultHotkeys } from '../../shared/hotkey'
@@ -30,6 +31,8 @@ const LANGUAGES: [string, string][] = [
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
+// A panel switch: brass when live, dark when not. Squared off, because
+// nothing on a console front panel is a pill.
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }): JSX.Element {
   return (
     <button
@@ -37,27 +40,32 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex w-9 h-5 shrink-0 rounded-full transition-colors duration-150 border border-white/10 ${
-        checked ? 'bg-primary border-primary' : 'bg-white/10'
+      className={`relative inline-flex w-[38px] h-[21px] shrink-0 rounded-sm border transition-colors duration-150 ${
+        checked
+          ? 'bg-brass border-brass-edge shadow-[0_0_10px_rgba(201,162,39,0.22)]'
+          : 'bg-surface-container-lowest border-outline-variant'
       }`}
     >
       <span
-        className={`absolute top-[2px] w-[14px] h-[14px] rounded-full transition-transform duration-150 ${
-          checked ? 'translate-x-[18px] bg-white' : 'translate-x-[2px] bg-white/60'
+        className={`absolute top-[2px] w-[15px] h-[15px] rounded-[2px] transition-transform duration-150 ${
+          checked ? 'translate-x-[20px] bg-[#1a1408]' : 'translate-x-[2px] bg-cream-faint'
         }`}
       />
     </button>
   )
 }
 
+// Settings read as a continuous list of engraved rows separated by hairlines,
+// rather than a stack of floating cards. The secondary line is set in the
+// same plate lettering as the nav, which is what ties the two together.
 function Row({
   title, hint, control
 }: { title: string; hint?: string; control: React.ReactNode }): JSX.Element {
   return (
-    <div className="glass rounded-xl p-4 flex items-center justify-between gap-4 hover:bg-white/[0.06] transition-colors">
+    <div className="flex items-center justify-between gap-6 py-3.5 px-1 border-b border-outline-variant/60 hover:bg-brass/[0.035] transition-colors">
       <div className="min-w-0">
-        <div className="text-body-md text-on-surface mb-0.5">{title}</div>
-        {hint && <div className="text-label-sm text-on-surface-variant">{hint}</div>}
+        <div className="text-body-md text-cream">{title}</div>
+        {hint && <div className="text-plate uppercase text-cream-faint mt-1">{hint}</div>}
       </div>
       {control}
     </div>
@@ -66,7 +74,7 @@ function Row({
 
 function SectionHeader({ children }: { children: React.ReactNode }): JSX.Element {
   return (
-    <h3 className="text-label-sm text-on-surface-variant uppercase tracking-widest mb-3 mt-2">
+    <h3 className="text-plate uppercase text-brass-dim mb-2 mt-7 w-condensed">
       {children}
     </h3>
   )
@@ -76,10 +84,10 @@ function PageHeader({ title, subtitle, action }: {
   title: string; subtitle?: string; action?: React.ReactNode
 }): JSX.Element {
   return (
-    <div className="flex items-end justify-between border-b border-white/10 pb-4 mb-8">
+    <div className="flex items-end justify-between border-b border-brass/25 pb-4 mb-7">
       <div>
-        <h2 className="text-headline-md text-on-surface tracking-tight">{title}</h2>
-        {subtitle && <p className="text-label-md text-on-surface-variant mt-1">{subtitle}</p>}
+        <h2 className="text-headline-md text-cream w-expanded">{title}</h2>
+        {subtitle && <p className="text-label-md text-cream-dim mt-1.5 max-w-[62ch]">{subtitle}</p>}
       </div>
       {action}
     </div>
@@ -88,7 +96,7 @@ function PageHeader({ title, subtitle, action }: {
 
 function KbdChip({ children }: { children: React.ReactNode }): JSX.Element {
   return (
-    <kbd className="inline-flex items-center px-2 py-0.5 rounded-md border border-white/10 bg-white/5 text-on-surface text-label-sm font-mono">
+    <kbd className="inline-flex items-center px-2 py-0.5 rounded-[3px] border border-brass/35 bg-brass/10 text-brass-bright text-label-sm font-mono">
       {children}
     </kbd>
   )
@@ -116,39 +124,39 @@ function GeneralTab(): JSX.Element {
   return (
     <div>
       <PageHeader title="General" />
-      <SectionHeader>Application</SectionHeader>
-      <div className="space-y-2 mb-8">
-        <Row title="Launch on startup" hint={`Automatically start Jazz when you log in${IS_MAC ? '' : ' to Windows'}.`}
+      <SectionHeader>Startup</SectionHeader>
+      <div className="mb-8 border-t border-outline-variant/60">
+        <Row title="Open Jazz when you log in" hint="Runs in the menu bar, ready for the hotkey"
           control={<Toggle checked={config.launchAtStartup} onChange={(v) => update({ launchAtStartup: v })} />} />
-        <Row title="Show floating orb" hint="Always-visible orb — click to toggle listening, drag to move."
+        <Row title="Show the meter" hint="Click it to start and stop · drag to move it"
           control={<Toggle checked={config.showOverlay} onChange={(v) => update({ showOverlay: v })} />} />
-        <Row title="Play sounds" hint="Audio cues on start/stop of recording."
+        <Row title="Play a sound when recording starts and stops" hint="A short cue, useful when the meter is hidden"
           control={<Toggle checked={config.playSounds} onChange={(v) => update({ playSounds: v })} />} />
       </div>
 
-      <SectionHeader>Hardware</SectionHeader>
-      <div className="space-y-2 mb-8">
-        <Row title="Use GPU acceleration"
+      <SectionHeader>Processing</SectionHeader>
+      <div className="mb-8 border-t border-outline-variant/60">
+        <Row title="Transcribe on the graphics card"
           hint={IS_MAC
-            ? 'Run whisper on your Mac’s GPU via Metal (much faster). Turn off to force CPU.'
-            : 'Run whisper on your NVIDIA GPU when available (10–20× faster). Turn off to force CPU.'}
+            ? 'Much faster than the CPU · turn off if you hit trouble'
+            : 'Up to 20× faster on an NVIDIA card · turn off to force CPU'}
           control={<Toggle checked={config.useGPU} onChange={(v) => update({ useGPU: v })} />} />
+        <Row title="Trim silence before transcribing" hint="Skips pauses and breathing · recommended"
+          control={<Toggle checked={config.useVAD} onChange={(v) => update({ useVAD: v })} />} />
+        <Row title="Search harder for the right words" hint="More accurate, slightly slower"
+          control={<Toggle checked={config.beamSearch} onChange={(v) => update({ beamSearch: v })} />} />
       </div>
 
-      <SectionHeader>Speech &amp; Processing</SectionHeader>
-      <div className="space-y-2 mb-8">
-        <Row title="Remove filler words" hint='Strips "um", "uh", "like", "basically" before injection.'
+      <SectionHeader>The text you get</SectionHeader>
+      <div className="mb-8 border-t border-outline-variant/60">
+        <Row title="Drop filler words" hint="Removes um · uh · like · basically"
           control={<Toggle checked={config.removeFiller} onChange={(v) => update({ removeFiller: v })} />} />
-        <Row title="Beam search" hint="Higher transcription accuracy, slightly slower."
-          control={<Toggle checked={config.beamSearch} onChange={(v) => update({ beamSearch: v })} />} />
-        <Row title="Voice activity detection (VAD)" hint="Trim silence/breathing before transcribing — recommended."
-          control={<Toggle checked={config.useVAD} onChange={(v) => update({ useVAD: v })} />} />
-        <Row title="Mute system audio while listening" hint="Silences music/video so the mic is heard clearly, then restores it."
+        <Row title="Mute other audio while listening" hint="Silences playback so the mic hears you, then restores it"
           control={<Toggle checked={config.muteWhileListening} onChange={(v) => update({ muteWhileListening: v })} />} />
       </div>
 
-      <SectionHeader>Interface</SectionHeader>
-      <Row title="Language" hint="Primary language for speech recognition."
+      <SectionHeader>Language</SectionHeader>
+      <Row title="Language you speak" hint="Auto-detect handles most cases"
         control={
           <div className="relative">
             <select
@@ -158,9 +166,7 @@ function GeneralTab(): JSX.Element {
             >
               {LANGUAGES.map(([code, name]) => <option key={code} value={code}>{name}</option>)}
             </select>
-            <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">
-              expand_more
-            </span>
+            <Icon name="expand_more" size={20} className="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
           </div>
         } />
     </div>
@@ -216,7 +222,7 @@ function ModelTab(): JSX.Element {
             onClick={() => void window.jazz.getMicDevices().then(setMics)}
             className="inline-flex items-center gap-2 bg-transparent border border-white/10 text-on-surface text-label-md py-1.5 px-3 rounded-lg hover:border-white/30 transition-colors h-fit"
           >
-            <span className="material-symbols-outlined text-[18px]">mic</span>
+            <Icon name="mic" size={18} />
             <span>Test mic</span>
           </button>
         }
@@ -263,7 +269,7 @@ function ModelTab(): JSX.Element {
                 )
               ) : downloads.has(id) ? (
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-primary/30 bg-primary/10 text-primary text-label-md tabular-nums">
-                  <span className="material-symbols-outlined text-[16px] animate-pulse">cloud_download</span>
+                  <Icon name="cloud_download" size={16} className="animate-pulse" />
                   {downloads.get(id)?.percent ?? 0}%
                 </span>
               ) : (
@@ -271,7 +277,7 @@ function ModelTab(): JSX.Element {
                   onClick={() => startDownload(id)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-white/10 text-on-surface text-label-md hover:border-white/30 transition-colors"
                 >
-                  <span className="material-symbols-outlined text-[16px]">download</span>
+                  <Icon name="download" size={16} />
                   Download
                 </button>
               )}
@@ -284,7 +290,7 @@ function ModelTab(): JSX.Element {
         <div className="flex flex-col gap-2 mt-5">
           {Array.from(downloads.entries()).map(([id, p]) => (
             <div key={id} className="glass-strong rounded-xl p-4 flex items-center gap-4">
-              <span className="material-symbols-outlined text-primary">cloud_download</span>
+              <Icon name="cloud_download" size={18} className="text-primary" />
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-baseline text-label-md mb-1">
                   <span className="text-on-surface truncate">
@@ -311,7 +317,7 @@ function ModelTab(): JSX.Element {
               <ul className="space-y-1 text-label-md">
                 {mics.map((d) => (
                   <li key={d.id} className="flex items-center gap-2 text-on-surface">
-                    <span className="material-symbols-outlined text-[18px] text-on-surface-variant">mic</span>
+                    <Icon name="mic" size={18} className="text-on-surface-variant" />
                     {d.name}
                   </li>
                 ))}
@@ -391,7 +397,7 @@ function HotkeyRebind({
               onClick={startCapture}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-white/10 text-on-surface text-label-md hover:border-white/30 transition-colors"
             >
-              <span className="material-symbols-outlined text-[16px]">edit</span>
+              <Icon name="edit" size={16} />
               Rebind
             </button>
           </>
@@ -542,7 +548,7 @@ function SnippetsTab(): JSX.Element {
   return (
     <div>
       <PageHeader title="Snippets" subtitle='Speak a trigger phrase, Jazz pastes the expansion. e.g. "insert my email" → your address.' />
-      <div className="space-y-2 mb-4">
+      <div className="mb-4 border-t border-outline-variant/60">
         <input value={trigger} onChange={(e) => setTrigger(e.target.value)} placeholder="Trigger phrase"
           className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-body-md text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-white/40" />
         <textarea value={expansion} onChange={(e) => setExpansion(e.target.value)} placeholder="Expansion text" rows={3}
@@ -621,7 +627,7 @@ function TranscriptsTab(): JSX.Element {
               onClick={clearAll}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-white/10 text-on-surface-variant text-label-md hover:border-white/30 hover:text-on-surface transition-colors"
             >
-              <span className="material-symbols-outlined text-[16px]">delete_sweep</span>
+              <Icon name="delete_sweep" size={16} />
               Clear all
             </button>
           )
@@ -630,7 +636,7 @@ function TranscriptsTab(): JSX.Element {
 
       {records.length === 0 ? (
         <div className="glass rounded-xl p-10 text-center">
-          <span className="material-symbols-outlined text-on-surface-variant text-[36px]">history</span>
+          <Icon name="history" size={36} className="text-on-surface-variant" />
           <p className="text-on-surface mt-3 mb-1">No transcripts yet</p>
           <p className="text-label-sm text-on-surface-variant">
             Hold {HOTKEYS.pushToTalk.split('+').map((t, i, arr) => (
@@ -654,16 +660,14 @@ function TranscriptsTab(): JSX.Element {
                   onClick={() => copy(t)}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-white/10 text-on-surface-variant text-label-sm hover:border-white/30 hover:text-on-surface transition-colors"
                 >
-                  <span className="material-symbols-outlined text-[14px]">
-                    {copiedId === t.id ? 'check' : 'content_copy'}
-                  </span>
+                  <Icon name={copiedId === t.id ? 'check' : 'content_copy'} size={14} />
                   {copiedId === t.id ? 'Copied' : 'Copy'}
                 </button>
                 <button
                   onClick={() => void reinject(t)}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-white/10 text-on-surface-variant text-label-sm hover:border-white/30 hover:text-on-surface transition-colors"
                 >
-                  <span className="material-symbols-outlined text-[14px]">redo</span>
+                  <Icon name="redo" size={14} />
                   Re-inject
                 </button>
               </div>
@@ -684,7 +688,7 @@ function AboutTab(): JSX.Element {
       <PageHeader title="About" />
       <div className="glass rounded-xl p-6 mb-6">
         <div className="flex items-center gap-3 mb-2">
-          <span className="material-symbols-outlined filled text-primary text-[28px]">graphic_eq</span>
+          <Icon name="graphic_eq" size={28} className="text-primary" />
           <div>
             <h3 className="text-headline-sm text-on-surface">Jazz</h3>
             <p className="text-label-sm text-on-surface-variant">v{APP_VERSION} · offline voice dictation</p>
@@ -694,7 +698,7 @@ function AboutTab(): JSX.Element {
           100% on-device. Your audio never leaves your machine.
         </p>
       </div>
-      <div className="space-y-2 mb-6">
+      <div className="mb-6 border-t border-outline-variant/60">
         <Row title="Active model" control={
           <span className="text-label-md text-on-surface">{config ? modelLabel(config.activeModel, PLATFORM).split(' ★')[0] : '—'}</span>
         } />
@@ -705,12 +709,12 @@ function AboutTab(): JSX.Element {
       <div className="flex gap-2">
         <button onClick={() => void window.jazz.openLogs()}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-white/10 text-on-surface text-label-md hover:border-white/30 transition-colors">
-          <span className="material-symbols-outlined text-[18px]">description</span>
+          <Icon name="description" size={18} />
           Open logs
         </button>
         <button onClick={() => window.jazz.quitApp()}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-white/10 text-on-surface text-label-md hover:border-white/30 transition-colors">
-          <span className="material-symbols-outlined text-[18px]">power_settings_new</span>
+          <Icon name="power_settings_new" size={18} />
           Quit Jazz
         </button>
       </div>
@@ -731,41 +735,43 @@ export default function App(): JSX.Element {
   return (
     <div className="flex w-full h-screen text-on-surface ambient-glow">
       {/* Sidebar */}
-      <nav className="w-60 shrink-0 border-r border-white/10 flex flex-col p-5 ambient-glow-violet">
-        <div className="mb-8 flex items-center gap-2">
-          <span className="material-symbols-outlined filled text-primary text-[22px]">graphic_eq</span>
+      <nav className="w-60 shrink-0 border-r border-outline-variant/70 flex flex-col p-5 ambient-glow-brass">
+        <div className="mb-9 flex items-center gap-2.5">
+          <Icon name="graphic_eq" size={20} className="text-brass" strokeWidth={2} />
           <div>
-            <h1 className="text-headline-sm text-on-surface tracking-tight leading-none">Jazz</h1>
-            <p className="text-label-sm text-on-surface-variant mt-0.5">v{APP_VERSION}</p>
+            <h1 className="text-headline-sm text-cream leading-none w-expanded">Jazz</h1>
+            <p className="font-mono text-[10px] text-cream-faint mt-1 tracking-wider">v{APP_VERSION}</p>
           </div>
         </div>
-        <ul className="flex flex-col gap-0.5 flex-1">
+        <ul className="flex flex-col flex-1">
           {TABS.map((t) => {
             const active = tab === t.id
             return (
               <li key={t.id}>
                 <button
                   onClick={() => setTab(t.id)}
-                  className={`w-full text-left flex items-center gap-3 px-3 py-2 rounded-lg transition-colors duration-150 ${
+                  aria-current={active ? 'page' : undefined}
+                  // Active state is a brass rule under the label, not a filled
+                  // pill — a marked position on a panel, not a selected chip.
+                  className={`w-full text-left flex items-center gap-3 py-2.5 border-b transition-colors duration-150 ${
                     active
-                      ? 'bg-white/[0.08] text-on-surface'
-                      : 'text-on-secondary-container hover:bg-white/[0.04] hover:text-on-surface'
+                      ? 'border-brass text-brass-bright'
+                      : 'border-transparent text-cream-dim hover:text-cream'
                   }`}
                 >
-                  <span
-                    className={`material-symbols-outlined text-[20px] ${active ? 'text-primary' : ''}`}
-                    style={active ? { fontVariationSettings: "'FILL' 1" } : undefined}
-                  >
-                    {t.icon}
-                  </span>
-                  <span className="text-label-md">{t.label}</span>
+                  <Icon name={t.icon} size={15} strokeWidth={active ? 2 : 1.6} />
+                  <span className="text-plate-lg uppercase w-condensed">{t.label}</span>
                 </button>
               </li>
             )
           })}
         </ul>
-        <div className="border-t border-white/10 pt-4 text-label-sm text-on-surface-variant/70">
-          Hold <span className="text-on-surface">{formatChord(config?.pushToTalkHotkey ?? HOTKEYS.pushToTalk, PLATFORM)}</span> to dictate.
+        <div className="border-t border-outline-variant/70 pt-4 text-plate uppercase text-cream-faint leading-relaxed">
+          Hold{' '}
+          <span className="font-mono text-brass-dim normal-case tracking-normal">
+            {formatChord(config?.pushToTalkHotkey ?? HOTKEYS.pushToTalk, PLATFORM)}
+          </span>{' '}
+          to dictate
         </div>
       </nav>
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Icon from '../Icon'
 import { MODELS, DEFAULT_MODEL, modelLabel, modelDescription } from '../../shared/constants'
 import { formatChord, defaultHotkeys } from '../../shared/hotkey'
 import type { ModelSize, DownloadProgress, PermissionState } from '../../shared/types'
@@ -89,7 +90,7 @@ export default function Wizard(): JSX.Element {
   const Welcome = (
     <div className="flex flex-col items-center text-center max-w-md mx-auto">
       <div className="w-16 h-16 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center mb-5 shadow-glow">
-        <span className="material-symbols-outlined filled text-primary text-[36px]">graphic_eq</span>
+        <Icon name="graphic_eq" size={36} className="text-primary" />
       </div>
       <h2 className="text-headline-lg-mobile text-on-surface tracking-tight mb-3">Meet Jazz</h2>
       <p className="text-body-md text-on-surface-variant mb-6">
@@ -127,12 +128,7 @@ export default function Wizard(): JSX.Element {
               </div>
             )}
             <div className="flex justify-between items-start">
-              <span
-                className={`material-symbols-outlined text-[24px] ${active ? 'text-primary' : 'text-on-surface-variant'}`}
-                style={active ? { fontVariationSettings: "'FILL' 1" } : undefined}
-              >
-                {meta.icon}
-              </span>
+              <Icon name={meta.icon} size={24} className={`${active ? 'text-primary' : 'text-on-surface-variant'}`} />
               <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${active ? 'border-primary bg-primary' : 'border-white/20'}`}>
                 {active && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
               </div>
@@ -207,14 +203,14 @@ export default function Wizard(): JSX.Element {
   }: { icon: string; title: string; desc: string; granted: boolean; actionLabel: string; onAction: () => void }): JSX.Element {
     return (
       <div className="flex items-center gap-4 rounded-xl border border-white/10 bg-surface/10 p-4">
-        <span className={`material-symbols-outlined text-[24px] ${granted ? 'text-primary' : 'text-on-surface-variant'}`}>{icon}</span>
+        <Icon name={icon} size={24} className={`${granted ? 'text-primary' : 'text-on-surface-variant'}`} />
         <div className="min-w-0 flex-1">
           <h3 className="text-label-md text-on-surface">{title}</h3>
           <p className="text-label-sm text-on-surface-variant leading-relaxed">{desc}</p>
         </div>
         {granted ? (
           <span className="inline-flex items-center gap-1 text-primary text-label-sm shrink-0">
-            <span className="material-symbols-outlined filled text-[18px]">check_circle</span>Granted
+            <Icon name="check_circle" size={16} />Granted
           </span>
         ) : (
           <button onClick={onAction} className="btn-primary shrink-0">{actionLabel}</button>
@@ -255,7 +251,7 @@ export default function Wizard(): JSX.Element {
   const Done = (
     <div className="flex flex-col items-center text-center max-w-md mx-auto">
       <div className="w-16 h-16 rounded-full bg-primary/15 border border-primary/30 flex items-center justify-center mb-5 shadow-glow">
-        <span className="material-symbols-outlined filled text-primary text-[36px]">check_circle</span>
+        <Icon name="check_circle" size={36} className="text-primary" />
       </div>
       <h2 className="text-headline-md text-on-surface tracking-tight mb-3">You're ready</h2>
       <p className="text-body-md text-on-surface-variant">
@@ -314,37 +310,37 @@ export default function Wizard(): JSX.Element {
             {step === 'welcome' && (
               <button onClick={() => setStep('pick')} className="btn-primary">
                 Get started
-                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                <Icon name="arrow_forward" size={18} />
               </button>
             )}
             {step === 'pick' && (
               <>
                 <button onClick={() => setStep('welcome')} className="btn-ghost">
-                  <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                  <Icon name="arrow_back" size={18} />
                   Back
                 </button>
                 <button onClick={beginDownload} className="btn-primary">
                   Download
-                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                  <Icon name="arrow_forward" size={18} />
                 </button>
               </>
             )}
             {step === 'download' && error && (
               <button onClick={beginDownload} className="btn-primary">
                 Retry
-                <span className="material-symbols-outlined text-[18px]">refresh</span>
+                <Icon name="refresh" size={18} />
               </button>
             )}
             {step === 'permissions' && (
               <button onClick={() => setStep('done')} className="btn-primary">
                 {micGranted && axGranted ? 'Continue' : 'Skip for now'}
-                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                <Icon name="arrow_forward" size={18} />
               </button>
             )}
             {step === 'done' && (
               <button onClick={finish} className="btn-primary">
                 Start using Jazz
-                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                <Icon name="arrow_forward" size={18} />
               </button>
             )}
           </div>
@@ -356,14 +352,14 @@ export default function Wizard(): JSX.Element {
           display: inline-flex;
           align-items: center;
           gap: 0.5rem;
-          background: #c44af0;
-          color: #ffffff;
+          background: #c9a227;
+          color: #1a1408;
           padding: 0.5rem 1.25rem;
-          border-radius: 0.5rem;
+          border-radius: 3px;
           font-size: 14px;
-          font-weight: 500;
+          font-weight: 600;
           letter-spacing: 0.01em;
-          box-shadow: 0 0 15px rgba(196,74,240,0.3);
+          box-shadow: 0 0 15px rgba(201,162,39,0.25);
           transition: opacity 150ms;
         }
         .btn-primary:hover { opacity: 0.9; }
@@ -372,16 +368,16 @@ export default function Wizard(): JSX.Element {
           align-items: center;
           gap: 0.5rem;
           background: transparent;
-          color: #e5e2e1;
+          color: #ede6da;
           padding: 0.5rem 1.25rem;
-          border-radius: 0.5rem;
+          border-radius: 3px;
           font-size: 14px;
           font-weight: 500;
           letter-spacing: 0.01em;
-          border: 1px solid rgba(255,255,255,0.1);
+          border: 1px solid rgba(255,220,180,0.14);
           transition: border-color 150ms;
         }
-        .btn-ghost:hover { border-color: rgba(255,255,255,0.3); }
+        .btn-ghost:hover { border-color: rgba(201,162,39,0.5); }
       `}</style>
     </div>
   )

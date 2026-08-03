@@ -32,6 +32,13 @@ async function start(): Promise<void> {
     processor.onaudioprocess = (e): void => {
       const input = e.inputBuffer.getChannelData(0)
       chunks.push(new Float32Array(input))
+      // Emit the RMS of this buffer so the overlay's meter tracks real signal
+      // rather than animating on a timer. At a 4096-sample buffer this fires
+      // roughly every 85 ms, which is well inside the 300 ms integration time
+      // the meter's ballistics apply on the other end.
+      let sum = 0
+      for (let i = 0; i < input.length; i++) sum += input[i] * input[i]
+      window.jazz.sendLevel(Math.sqrt(sum / input.length))
     }
 
     source.connect(processor)
@@ -89,6 +96,10 @@ function stop(): void {
   processor = null
   stream = null
   chunks = []
+
+  // Signal silence so the meter's needle falls back to rest rather than
+  // freezing at whatever level the last buffer happened to carry.
+  window.jazz.sendLevel(0)
 
   // Transfer the underlying buffer to main.
   window.jazz.sendAudioData(pcm16.buffer as ArrayBuffer)

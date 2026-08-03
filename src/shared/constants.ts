@@ -200,15 +200,42 @@ export const PIPELINE = {
 // ─── Overlay ──────────────────────────────────────────────────────────────────
 
 export const OVERLAY = {
-  WIDTH: 220,
-  HEIGHT: 48,
+  // Sized for the meter's recording state. The window is transparent and
+  // click-through everywhere except the visible module, so the extra room
+  // costs nothing while idle.
+  WIDTH: 300,
+  HEIGHT: 92,
   MARGIN_RIGHT: 24,
   MARGIN_BOTTOM: 60,
   SUCCESS_VISIBLE_MS: 2000,
   // Pointer movement (px) beyond which a press is treated as a drag, not a click.
   DRAG_THRESHOLD: 5,
-  // Approx width of the visible idle pill. The window is wider than the pill to
-  // fit the recording text; clamping uses this so the *pill* (not the empty
-  // window edge) can be dragged to the screen edge.
-  ORB_VISIBLE: 92,
+  // Approx width of the visible idle lozenge. The window is wider than it to
+  // fit the meter; clamping uses this so the *module* (not the empty window
+  // edge) can be dragged to the screen edge.
+  ORB_VISIBLE: 132,
+}
+
+// ─── VU meter ─────────────────────────────────────────────────────────────────
+// A real VU meter is a mechanical instrument with a defined response: it
+// deflects linearly with voltage (not decibels — the log scale lives in where
+// the numbers are painted), and reaches ~99% of a step in 300 ms with a small
+// overshoot before settling. Reproducing both is what separates this from a
+// bar graph wearing a costume.
+
+export const VU = {
+  /** RMS that reads as 0 VU. Tuned so ordinary dictation into a laptop mic
+   *  rides around -7 to -3 VU and only genuine shouting pushes into the red. */
+  REF_RMS: 0.16,
+  /** Scale ends, in VU. Matches the painted range on the face. */
+  MIN_DB: -20,
+  MAX_DB: 3,
+  /** Needle sweep in degrees either side of vertical. */
+  MAX_ANGLE: 58,
+  /** Ballistics: natural frequency (rad/s) and damping ratio. ZETA just under
+   *  1 leaves the few percent of overshoot a real needle has. */
+  OMEGA: 22,
+  ZETA: 0.7,
+  /** How long the overload lamp stays lit after a peak above 0 VU. */
+  PEAK_HOLD_MS: 900,
 }
