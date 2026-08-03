@@ -1,4 +1,4 @@
-import { spawn, ChildProcessWithoutNullStreams } from 'child_process'
+import { spawn, execFile, ChildProcessWithoutNullStreams } from 'child_process'
 import { existsSync } from 'fs'
 import { cpus } from 'os'
 import { join } from 'path'
@@ -8,6 +8,7 @@ import { is } from '@electron-toolkit/utils'
 import { pcmToWav } from './wav'
 import { modelPath, vadPath, isVadInstalled, ensureVadInstalled } from './models'
 import { getConfig } from '../store'
+import { PIPELINE } from '../../shared/constants'
 import type { ModelSize, JazzConfig } from '../../shared/types'
 import log from '../logger'
 
@@ -27,6 +28,30 @@ function resolveBinary(): string | null {
     if (existsSync(p)) return p
   }
   return null
+}
+
+/**
+ * Kill any whisper-server processes left running from a previous session.
+ * Node doesn't reap child processes when its parent is SIGKILLed (e.g. a
+ * Force Quit during a hang), so without this a crash leaves a full model
+ * loaded in RAM (300 MB–1.5 GB+) running invisibly forever. Call once at
+ * startup, before this session launches its own. macOS/Linux only — no
+ * pgrep on Windows, and orphaning is specific to the child-process model
+ * used here.
+ */
+export function killOrphanServers(): void {
+  if (process.platform === 'win32') return
+  const bin = resolveBinary()
+  if (!bin) return
+  execFile('pgrep', ['-f', bin], (err, stdout) => {
+    if (err) return // no matches, or pgrep unavailable — nothing to do
+    for (const raw of stdout.split('\n')) {
+      const pid = parseInt(raw.trim(), 10)
+      if (!Number.isFinite(pid) || pid === process.pid) continue
+      log.warn(`Killing orphaned whisper-server from a previous session (pid=${pid})`)
+      try { process.kill(pid, 'SIGKILL') } catch (killErr) { log.warn(`Failed to kill orphan pid=${pid}`, killErr) }
+    }
+  })
 }
 
 /** Ask the OS for a free TCP port so we never collide with other apps. */
@@ -181,10 +206,21 @@ export class WhisperServer {
     if (prompt) form.append('prompt', prompt)
 
     const t0 = Date.now()
-    const res = await fetch(`http://127.0.0.1:${this.port}/inference`, {
-      method: 'POST',
-      body: form
-    })
+    let res: Response
+    try {
+      res = await fetch(`http://127.0.0.1:${this.port}/inference`, {
+        method: 'POST',
+        body: form,
+        signal: AbortSignal.timeout(PIPELINE.INFERENCE_TIMEOUT_MS)
+      })
+    } catch (err) {
+      // A timeout/abort here almost always means the server process is wedged
+      // (e.g. a Metal/GPU stall) — kill it now so the next capture relaunches
+      // a fresh one instead of hitting the same hang again.
+      log.error(`whisper-server did not respond within ${PIPELINE.INFERENCE_TIMEOUT_MS}ms — killing and will relaunch`, err)
+      void this.stop()
+      throw new Error(`whisper-server timed out after ${Date.now() - t0}ms`)
+    }
     if (!res.ok) throw new Error(`whisper-server HTTP ${res.status}: ${await res.text().catch(() => '')}`)
     const json = (await res.json()) as { text?: string }
     const text = (json.text ?? '').trim()

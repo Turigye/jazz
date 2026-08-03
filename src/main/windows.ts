@@ -333,6 +333,21 @@ export function getRecorderWindow(): BrowserWindow | null {
   return recorderWindow && !recorderWindow.isDestroyed() ? recorderWindow : null
 }
 
+/**
+ * Force-destroy and recreate the hidden recorder window. Used when the
+ * recorder's renderer process stops responding to REC_STOP (e.g. its JS
+ * thread is wedged) — destroying the webContents is the only way to
+ * guarantee Chromium releases the underlying OS microphone stream in that
+ * case, since a hung renderer can't run the normal `track.stop()` cleanup.
+ */
+export function recreateRecorderWindow(): BrowserWindow {
+  if (recorderWindow && !recorderWindow.isDestroyed()) {
+    recorderWindow.destroy()
+  }
+  recorderWindow = null
+  return createRecorderWindow()
+}
+
 /** Broadcast a message to every live window. */
 export function broadcast(channel: string, ...args: unknown[]): void {
   for (const win of [overlayWindow, settingsWindow, wizardWindow]) {

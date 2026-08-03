@@ -326,8 +326,8 @@ function ModelTab(): JSX.Element {
 // ─── Tab: Hotkeys (configurable) ──────────────────────────────────────────────
 
 function HotkeyRebind({
-  label, current, onSave, defaultChord
-}: { label: string; current: string; onSave: (chord: string) => void; defaultChord: string }): JSX.Element {
+  label, current, onSave, defaultChord, accessibilityGranted
+}: { label: string; current: string; onSave: (chord: string) => void; defaultChord: string; accessibilityGranted: boolean }): JSX.Element {
   const [capturing, setCapturing] = useState(false)
   const [error, setError] = useState('')
 
@@ -339,7 +339,17 @@ function HotkeyRebind({
       onSave(chord)
     } catch (e) {
       const msg = (e as Error).message
-      if (msg !== 'cancelled') setError(msg)
+      if (msg === 'cancelled') {
+        // no-op
+      } else if (msg.includes('timeout') && !accessibilityGranted) {
+        // The capture listens via the same OS-level key tap the global
+        // hotkey uses — without Accessibility granted it never receives any
+        // keys, so it always times out. The raw IPC error is meaningless
+        // here; point at the actual cause instead.
+        setError('Jazz needs Accessibility access to detect key presses')
+      } else {
+        setError(msg)
+      }
     } finally {
       setCapturing(false)
     }
@@ -393,22 +403,53 @@ function HotkeyRebind({
 
 function HotkeysTab(): JSX.Element {
   const { config, update } = useConfig()
+  const [accessibilityGranted, setAccessibilityGranted] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    async function check(): Promise<void> {
+      const perms = await window.jazz.getPermissions()
+      if (!cancelled) setAccessibilityGranted(!perms.applicable || perms.accessibility)
+    }
+    void check()
+    // Re-check on focus: the user very likely just came back from granting
+    // it in System Settings.
+    window.addEventListener('focus', check)
+    return () => { cancelled = true; window.removeEventListener('focus', check) }
+  }, [])
+
   if (!config) return <></>
   return (
     <div>
       <PageHeader title="Hotkeys" subtitle={`Keyboard shortcuts for hands-free dictation. Modifier-only combos (${IS_MAC ? '⌃⇧⌥⌘' : 'Ctrl/Shift/Alt/Win'}) work best.`} />
+      {!accessibilityGranted && (
+        <div className="mb-4 p-3 rounded-lg border border-error/30 bg-error/10 flex items-center justify-between gap-3">
+          <div className="text-label-sm text-on-surface">
+            Accessibility access isn't granted, so global hotkeys and rebinding are both disabled right now.
+            If Jazz is already listed as enabled in Settings, toggle it off and back on — a rebuild can leave that grant stale.
+          </div>
+          <button
+            onClick={() => window.jazz.openAccessibilitySettings()}
+            className="shrink-0 px-3 py-1.5 rounded-md border border-white/10 text-on-surface text-label-md hover:border-white/30 transition-colors"
+          >
+            Open Settings
+          </button>
+        </div>
+      )}
       <div className="space-y-2">
         <HotkeyRebind
           label="Push to talk · hold to record, release to transcribe"
           current={config.pushToTalkHotkey}
           defaultChord={HOTKEYS.pushToTalk}
           onSave={(chord) => void update({ pushToTalkHotkey: chord })}
+          accessibilityGranted={accessibilityGranted}
         />
         <HotkeyRebind
           label="Toggle listening · tap once to start, tap again to stop"
           current={config.commandModeHotkey}
           defaultChord={HOTKEYS.toggle}
           onSave={(chord) => void update({ commandModeHotkey: chord })}
+          accessibilityGranted={accessibilityGranted}
         />
       </div>
       <p className="mt-6 text-label-sm text-on-surface-variant">

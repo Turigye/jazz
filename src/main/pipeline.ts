@@ -1,7 +1,7 @@
 import { Notification } from 'electron'
 import type { JazzState } from '../shared/types'
 import { IPC } from '../shared/types'
-import { AUDIO, OVERLAY } from '../shared/constants'
+import { AUDIO, OVERLAY, PIPELINE } from '../shared/constants'
 import { audioCapture, pcmRms } from './audio'
 import { sttEngine } from './stt/engine'
 import { postProcess } from './postprocess'
@@ -18,6 +18,13 @@ type Mode = 'idle' | 'ptt' | 'toggle'
 let mode: Mode = 'idle'
 let busy = false
 let recordStartTs = 0
+
+// Safety-net timers — see PIPELINE constants for why these exist. Both are
+// belt-and-suspenders: they should rarely fire, but when the normal stop
+// signal or the STT call gets lost, these are what let the app recover on
+// its own instead of requiring the user to Force Quit.
+let autoStopTimer: NodeJS.Timeout | null = null
+let watchdogTimer: NodeJS.Timeout | null = null
 
 function setState(state: JazzState, text?: string): void {
   broadcast(IPC.OVERLAY_STATE, state, text)
@@ -45,21 +52,51 @@ function beginCapture(newMode: Exclude<Mode, 'idle'>): void {
   }
 
   mode = newMode
+  log.info(`Capture started (mode=${newMode})`)
 
   // Mute background audio so whisper hears the mic clearly (fire-and-forget).
   if (getConfig().muteWhileListening) void muteSystem()
 
-  // No auto-stop: recording continues until the user releases Ctrl+Win
-  // (push-to-talk) or presses Ctrl+Alt / clicks the orb again (toggle mode).
+  // Recording normally continues until the user releases Ctrl+Win (push-to-talk)
+  // or presses Ctrl+Alt / clicks the orb again (toggle mode). This timer is a
+  // safety net for when that stop signal never arrives — e.g. macOS silently
+  // disabling uiohook's global event tap under system load, which drops the
+  // key-up entirely and would otherwise leave the mic recording forever with
+  // nothing the user can press to stop it.
+  autoStopTimer = setTimeout(() => {
+    log.warn(`Recording exceeded ${PIPELINE.MAX_RECORDING_MS}ms with no stop signal — auto-stopping`)
+    void finishCapture()
+  }, PIPELINE.MAX_RECORDING_MS)
 }
+
+let captureGen = 0
 
 /** Stop capturing, transcribe, post-process, and inject. */
 async function finishCapture(): Promise<void> {
   if (mode === 'idle' || !audioCapture.isCapturing || busy) return
+  if (autoStopTimer) { clearTimeout(autoStopTimer); autoStopTimer = null }
   busy = true
   mode = 'idle'
+  const myGen = ++captureGen
 
   const durationMs = Date.now() - recordStartTs
+  log.info(`Capture stopped after ${durationMs}ms (gen=${myGen}) — stopping audio`)
+
+  // Last-resort backstop: every await below is already individually bounded
+  // (audioCapture.stop has a 5s internal timeout, transcribe is bounded by
+  // PIPELINE.INFERENCE_TIMEOUT_MS / CLI_TIMEOUT_MS), but if something we
+  // haven't anticipated still hangs, this forces the app back to idle instead
+  // of leaving it stuck until the user force-quits. Guarded by myGen so a late
+  // watchdog fire from a superseded call can't clobber a newer capture.
+  watchdogTimer = setTimeout(() => {
+    if (myGen !== captureGen) return
+    log.error(`Pipeline watchdog: still busy after ${PIPELINE.WATCHDOG_MS}ms — forcing recovery to idle`)
+    busy = false
+    watchdogTimer = null
+    setState('error', 'Recovered from a stuck state')
+    notify('Jazz', 'Jazz recovered from a stuck state. If this keeps happening, check Settings → Open Logs.')
+    flashIdle(OVERLAY.SUCCESS_VISIBLE_MS)
+  }, PIPELINE.WATCHDOG_MS)
 
   try {
     const pcm = await audioCapture.stop()
@@ -83,14 +120,23 @@ async function finishCapture(): Promise<void> {
     const config = getConfig()
     const clean = postProcess(raw, config)
 
-    setState('injecting', clean)
-    await injectText(clean)
-
+    // Save the transcript before attempting injection: a paste failure (e.g.
+    // a permission the user hasn't re-granted after a rebuild) shouldn't lose
+    // the transcript — it's still on the clipboard and in Recent transcripts
+    // either way.
     const record = addTranscript(clean, raw, durationMs)
     broadcast(IPC.TRANSCRIPT_ADDED, record)
     refreshTrayMenu() // keep the tray's Recent submenu in sync
 
-    setState('success', clean)
+    setState('injecting', clean)
+    try {
+      await injectText(clean)
+      setState('success', clean)
+    } catch (err) {
+      log.error('Injection failed (transcript saved, text is on the clipboard)', err)
+      setState('error', (err as Error).message?.slice(0, 60))
+      notify('Jazz', (err as Error).message)
+    }
     flashIdle(OVERLAY.SUCCESS_VISIBLE_MS)
   } catch (err) {
     log.error('Pipeline error', err)
@@ -99,7 +145,8 @@ async function finishCapture(): Promise<void> {
     notify('Jazz', `Transcription failed: ${(err as Error).message}`)
     flashIdle(OVERLAY.SUCCESS_VISIBLE_MS)
   } finally {
-    busy = false
+    if (myGen === captureGen) busy = false
+    if (watchdogTimer) { clearTimeout(watchdogTimer); watchdogTimer = null }
   }
 }
 

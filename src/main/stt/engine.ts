@@ -9,6 +9,7 @@ import { pcmToWav } from './wav'
 import { modelPath, vadPath, isVadInstalled, ensureVadInstalled } from './models'
 import { getConfig } from '../store'
 import { whisperServer } from './server'
+import { PIPELINE } from '../../shared/constants'
 import type { ModelSize, JazzConfig } from '../../shared/types'
 import log from '../logger'
 
@@ -136,10 +137,29 @@ export class STTEngine {
         const proc = spawn(this.binary as string, args, { windowsHide: true, env })
         let stdout = ''
         let stderr = ''
+        let settled = false
+
+        // Never let a wedged whisper-cli process hang the pipeline forever.
+        const timer = setTimeout(() => {
+          if (settled) return
+          settled = true
+          log.error(`whisper-cli did not exit within ${PIPELINE.CLI_TIMEOUT_MS}ms — killing`)
+          proc.kill('SIGKILL')
+          reject(new Error('whisper-cli timed out'))
+        }, PIPELINE.CLI_TIMEOUT_MS)
+
         proc.stdout.on('data', (d) => (stdout += d.toString()))
         proc.stderr.on('data', (d) => (stderr += d.toString()))
-        proc.on('error', reject)
+        proc.on('error', (err) => {
+          if (settled) return
+          settled = true
+          clearTimeout(timer)
+          reject(err)
+        })
         proc.on('close', (code) => {
+          if (settled) return
+          settled = true
+          clearTimeout(timer)
           if (code === 0) resolve(cleanWhisperOutput(stdout))
           else reject(new Error(`whisper exited ${code}: ${stderr.slice(-400)}`))
         })

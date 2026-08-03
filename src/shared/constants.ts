@@ -173,6 +173,30 @@ export const AUDIO = {
   MAX_DURATION_S: 60,
 }
 
+// ─── Pipeline safety nets ──────────────────────────────────────────────────────
+// Defense against a stuck-recording hang: if the global hotkey's OS-level event
+// tap is ever silently disabled (macOS does this to taps whose callback is
+// judged too slow, more likely under system/GPU load) a key-up can be dropped
+// entirely, leaving the mic open forever with nothing the user can press to
+// stop it. These constants bound every stage so the app can always recover on
+// its own instead of requiring a Force Quit.
+
+export const PIPELINE = {
+  // Hard ceiling on a single recording, in ms — auto-stops and transcribes
+  // whatever was captured so far if no stop signal ever arrives.
+  MAX_RECORDING_MS: AUDIO.MAX_DURATION_S * 1000,
+  // Ceiling on a single whisper-server /inference request, in ms. A timeout
+  // here means the server process is likely wedged, so it gets killed and
+  // relaunched fresh on the next capture.
+  INFERENCE_TIMEOUT_MS: 30_000,
+  // Ceiling on the one-shot whisper-cli fallback process, in ms.
+  CLI_TIMEOUT_MS: 30_000,
+  // Last-resort backstop: if the whole capture→transcribe→inject pipeline
+  // hasn't finished by this point (ms), force state back to idle rather than
+  // leaving the app permanently stuck.
+  WATCHDOG_MS: 45_000,
+}
+
 // ─── Overlay ──────────────────────────────────────────────────────────────────
 
 export const OVERLAY = {

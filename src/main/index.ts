@@ -9,8 +9,9 @@ import { onRecordingStart, onRecordingStop, onToggleListening } from './pipeline
 import { createOverlayWindow, createWizardWindow, createSettingsWindow, createRecorderWindow } from './windows'
 import { sttEngine } from './stt/engine'
 import { anyModelInstalled } from './stt/models'
-import { whisperServer } from './stt/server'
+import { whisperServer, killOrphanServers } from './stt/server'
 import { ensureMicrophoneAccess, whenAccessibilityReady } from './permissions'
+import { healStaleMute, restoreSystem, isDucked } from './audioduck'
 import { formatChord } from '../shared/hotkey'
 import log from './logger'
 
@@ -48,6 +49,11 @@ function bootstrap(): void {
     app.setName(APP_NAME)
 
     initStore()
+
+    // Clean up anything a previous crashed session left behind — a mute that
+    // never got restored, and a whisper-server process that never got killed.
+    void healStaleMute()
+    killOrphanServers()
 
     // Allow the hidden recorder window to access the microphone.
     session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => {
@@ -105,5 +111,11 @@ function bootstrap(): void {
   app.on('will-quit', () => {
     hotkeyManager.stop()
     void whisperServer.stop()
+    // Best-effort: covers a graceful quit while mid-recording. Only acts if
+    // Jazz is the one currently holding the mute — otherwise this would wrongly
+    // un-mute audio the user muted themselves outside of a recording. A Force
+    // Quit (SIGKILL) bypasses this entirely, which is what healStaleMute() at
+    // the top of bootstrap() is for.
+    if (isDucked()) void restoreSystem()
   })
 }

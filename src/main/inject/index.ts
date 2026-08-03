@@ -26,6 +26,19 @@ export async function injectText(text: string): Promise<void> {
     else await pasteLinux()
   } catch (err) {
     log.error('Paste keystroke failed', err)
+    setTimeout(() => {
+      if (clipboard.readText() === text) clipboard.writeText(previous)
+    }, RESTORE_DELAY_MS)
+    // Previously swallowed here, so the pipeline reported "success" even
+    // though nothing was actually typed — e.g. macOS silently blocking the
+    // System Events keystroke because the Automation permission was denied
+    // or revoked (happens on every ad-hoc-signed rebuild). Rethrow so the
+    // caller shows a real error instead of a false checkmark; the text is
+    // still on the clipboard, so the user can paste it manually.
+    if (process.platform === 'darwin' && /not allowed to send keystrokes/i.test((err as Error).message)) {
+      throw new Error('No permission to paste — grant Jazz access in System Settings → Privacy & Security → Automation → System Events. Text was copied to your clipboard.')
+    }
+    throw new Error('Paste failed — text was copied to your clipboard, paste it manually.')
   }
   setTimeout(() => {
     if (clipboard.readText() === text) clipboard.writeText(previous)

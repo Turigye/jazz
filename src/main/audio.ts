@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron'
 import { IPC } from '../shared/types'
-import { getRecorderWindow } from './windows'
+import { getRecorderWindow, recreateRecorderWindow } from './windows'
 import log from './logger'
 
 export interface MicDevice {
@@ -59,7 +59,19 @@ export class AudioCapture {
       this.pending = resolve
       rec.webContents.send(IPC.REC_STOP)
       // Safety timeout so the pipeline never hangs on a lost reply.
-      setTimeout(() => this.pending && this.resolve(Buffer.alloc(0)), 5000)
+      setTimeout(() => {
+        if (!this.pending) return
+        log.error(
+          'Recorder window did not reply to REC_STOP within 5s — its renderer is likely wedged. ' +
+          'Destroying and recreating it so the OS mic stream actually releases.'
+        )
+        this.resolve(Buffer.alloc(0))
+        // A hung renderer can't run its own track.stop() cleanup, so the mic
+        // indicator would otherwise stay lit indefinitely even though the
+        // pipeline itself has recovered. Destroying the window's webContents
+        // is the only reliable way to force Chromium to release the device.
+        try { recreateRecorderWindow() } catch (err) { log.error('recreateRecorderWindow failed', err) }
+      }, 5000)
     })
   }
 
