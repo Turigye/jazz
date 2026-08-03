@@ -135,6 +135,7 @@
       "icon": "resources/icon.png",
       "category": "AudioVideo",
       "executableName": "jazz"
-    }
+    },
+    "afterSign": "scripts/verify-signing.js"
   }
 }

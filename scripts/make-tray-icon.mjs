@@ -14,18 +14,18 @@ import { dirname, join } from 'path'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 
-// Black mic silhouette on transparent — geometry lifted from resources/icon.svg
-// (capsule + pickup arc + stem + base), minus the colored square and note.
-// viewBox is cropped tight around the mic glyph (x80–176, y56–208 in 256-space)
-// so the silhouette fills the menu-bar frame instead of floating small in it.
+// Black VU-movement silhouette on transparent, matching the meter that is the
+// app's signature. At 18px a full meter is mush, so this reduces it to the two
+// marks that carry the idea: the scale arc and a deflected needle. Strokes are
+// deliberately heavy — anything under ~7 units in this viewBox disappears once
+// the menu bar downsamples it.
 const svg = Buffer.from(`
-<svg width="172" height="172" viewBox="42 46 172 172" xmlns="http://www.w3.org/2000/svg">
-  <g fill="#000000" stroke="#000000">
-    <rect x="104" y="56" width="48" height="86" rx="24" stroke="none"/>
-    <path d="M80 122 a48 48 0 0 0 96 0" fill="none" stroke-width="12" stroke-linecap="round"/>
-    <rect x="122" y="168" width="12" height="30" rx="6" stroke="none"/>
-    <rect x="98" y="196" width="60" height="12" rx="6" stroke="none"/>
+<svg width="104" height="84" viewBox="0 0 104 84" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="#000000" fill="none" stroke-linecap="round">
+    <path d="M12 64 A 44 44 0 0 1 92 64" stroke-width="8"/>
+    <line x1="52" y1="76" x2="70" y2="30" stroke-width="8"/>
   </g>
+  <circle cx="52" cy="76" r="9" fill="#000000"/>
 </svg>`)
 
 for (const [size, name] of [[18, 'iconTemplate.png'], [36, 'iconTemplate@2x.png']]) {

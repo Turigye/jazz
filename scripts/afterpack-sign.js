@@ -39,10 +39,33 @@ function hasLocalDevCert() {
   }
 }
 
+/**
+ * Does the keychain hold a certificate electron-builder will sign with itself?
+ * If so this hook must stand down: electron-builder signs *after* afterPack, so
+ * anything done here is overwritten, and signing twice with two different
+ * identities only makes build logs lie about what shipped.
+ */
+function builderWillSign() {
+  if (process.env.CSC_NAME || process.env.CSC_LINK || process.env.CSC_IDENTITY) return true
+  try {
+    const out = execFileSync('security', ['find-identity', '-v', '-p', 'codesigning'], {
+      encoding: 'utf8'
+    })
+    return !/\b0 valid identities found\b/.test(out)
+  } catch {
+    return false
+  }
+}
+
 exports.default = async function afterPack(context) {
   if (context.electronPlatformName !== 'darwin') return
   if (process.env.CSC_LINK || process.env.CSC_IDENTITY || process.env.APPLE_ID) {
     // Real signing/notarization path — leave electron-builder's signature intact.
+    return
+  }
+  if (builderWillSign()) {
+    // electron-builder has a real identity and signs after this hook; leave it
+    // alone. scripts/verify-signing.js then asserts the result never drifts.
     return
   }
   const appName = context.packager.appInfo.productFilename

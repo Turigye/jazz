@@ -28,3 +28,4 @@ src/**/*.d.ts
 !src/renderer/env.d.ts
 electron.vite.config.js
 electron.vite.config.d.ts
+.signing-identity.json
