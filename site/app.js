@@ -24,6 +24,12 @@
   var AMP_MAX = Math.pow(10, VU.MAX_DB / 20);
 
   var needle = document.getElementById('needle');
+  // The meter's geometry is generated from the app's constants, so the pivot
+  // lives in the markup rather than being repeated here. Hardcoding it meant
+  // the needle span was swinging around (75,74) while the hub was drawn at
+  // (70,68) — the two silently disagreed after the SVG was regenerated.
+  var PX = needle ? +needle.getAttribute('data-px') : 70;
+  var PY = needle ? +needle.getAttribute('data-py') : 68;
   var peakArc = document.getElementById('peakArc');
   var timecode = document.getElementById('timecode');
   var micBtn = document.getElementById('micBtn');
@@ -74,7 +80,7 @@
     if (pos < 0) { pos = 0; vel = 0; }
 
     if (needle) {
-      needle.setAttribute('transform', 'rotate(' + angleFor(pos).toFixed(2) + ' 75 74)');
+      needle.setAttribute('transform', 'rotate(' + angleFor(pos).toFixed(2) + ' ' + PX + ' ' + PY + ')');
     }
     if (pos > 1) peakUntil = now + VU.PEAK_HOLD;
     if (peakArc) peakArc.setAttribute('opacity', now < peakUntil ? '1' : '0.28');
@@ -88,7 +94,7 @@
   }
 
   if (needle && !reduced) requestAnimationFrame(frame);
-  if (reduced && needle) needle.setAttribute('transform', 'rotate(-18 75 74)');
+  if (reduced && needle) needle.setAttribute('transform', 'rotate(-18 ' + PX + ' ' + PY + ')');
 
   if (micBtn) {
     micBtn.addEventListener('click', function () {
