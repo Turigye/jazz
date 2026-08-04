@@ -52,11 +52,12 @@ jobs:
           fi
           echo "✓ static assets present, no third-party asset hosts"
 
-      # enablement turns Pages on for the repo on the first run, so this does
-      # not depend on someone having flipped a settings toggle by hand.
+      # One-time manual step before this can succeed:
+      #   Settings → Pages → Build and deployment → Source: GitHub Actions
+      # `enablement: true` cannot substitute for it — creating a Pages site
+      # needs repo-admin rights, and GITHUB_TOKEN does not have them however
+      # the permissions block is written.
       - uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
