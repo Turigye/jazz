@@ -64,6 +64,28 @@ Quit Jazz, relaunch, and accept the fresh system prompts.
 
 ---
 
+### Install the CI build, not a local one
+
+This is the trap that replaces the old one. Two different certificates are now
+in play:
+
+| Build | Signed with | Where it comes from |
+|---|---|---|
+| `npm run dist` | `Apple Development` (local keychain) | development only |
+| GitHub Actions | `Developer ID Application` (from `MAC_CERT_P12_BASE64`) | the released DMG |
+
+They are different identities, so **installing a local build over the released
+one resets every permission again**, and installing the release afterwards
+resets them back. Pick one and stay on it.
+
+The right habit: install only the notarized DMG from the Releases page. Use
+`npm run dist` to check that a build compiles and runs, not as something you
+drag into `/Applications`. The local identity lockfile keeps local builds
+self-consistent; it deliberately does not try to match CI, because the
+Developer ID private key should never sit on a development machine.
+
+---
+
 ## 2. Distributing a DMG that other people can actually open
 
 **A locally-signed build cannot be distributed.** Check what Gatekeeper decides
