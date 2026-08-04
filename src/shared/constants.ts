@@ -1,7 +1,7 @@
 import type { ModelInfo, ModelSize } from './types'
 
 export const APP_NAME = 'Jazz'
-export const APP_VERSION = '1.0.0'
+export const APP_VERSION = '1.1.0'
 
 // ─── Model Registry ───────────────────────────────────────────────────────────
 
