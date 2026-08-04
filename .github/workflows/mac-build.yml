@@ -99,23 +99,71 @@ jobs:
           npm run build
           npx electron-builder --mac dmg --arm64 --publish never
 
+      # This gate must be able to fail the build. It previously ran with
+      # continue-on-error, so a DMG that Gatekeeper rejects — or one that never
+      # got a notarization ticket — would still be published to the release,
+      # and the first person to find out would be whoever downloaded it.
       - name: Verify signing + notarization on the embedded .app
-        continue-on-error: true
         run: |
-          set +e
+          set -euo pipefail
           DMG=$(ls dist-installer/*.dmg | head -1)
           echo "▸ Mounting $DMG to inspect Jazz.app inside"
           MOUNT=$(hdiutil attach -nobrowse -readonly "$DMG" | tail -1 | awk '{ for (i=3; i<=NF; ++i) printf "%s ", $i; print "" }' | sed 's/[[:space:]]*$//')
           APP="$MOUNT/Jazz.app"
-          echo "▸ Mounted at: $MOUNT"
-          echo "▸ Checking $APP"
+          trap 'hdiutil detach "$MOUNT" >/dev/null 2>&1 || true' EXIT
+          FAIL=0
+
           echo "─── codesign ──────────────────────────────────────"
-          codesign -dv --verbose=4 "$APP"
+          codesign -dv --verbose=4 "$APP" 2>&1 | tee /tmp/cs.txt
+
+          # Must be Developer ID — an Apple Development cert cannot be
+          # distributed, and is device-provisioned besides.
+          if ! grep -q "Authority=Developer ID Application" /tmp/cs.txt; then
+            echo "::error::Not signed with a Developer ID Application certificate."
+            FAIL=1
+          fi
+          # Hardened runtime is a precondition of notarization.
+          if ! grep -q "flags=.*runtime" /tmp/cs.txt; then
+            echo "::error::Hardened runtime is not enabled."
+            FAIL=1
+          fi
+
           echo "─── spctl Gatekeeper assess ───────────────────────"
-          spctl -a -vvv "$APP"
+          if spctl -a -vvv -t execute "$APP" 2>&1 | tee /tmp/spctl.txt; then
+            grep -q "accepted" /tmp/spctl.txt || { echo "::error::Gatekeeper did not accept the app."; FAIL=1; }
+          else
+            echo "::error::Gatekeeper REJECTED the app — it would fail to open for users."
+            FAIL=1
+          fi
+
           echo "─── notarization ticket staple ────────────────────"
-          xcrun stapler validate "$APP"
-          hdiutil detach "$MOUNT" >/dev/null 2>&1 || true
+          if ! xcrun stapler validate "$APP"; then
+            echo "::error::No notarization ticket stapled. Users would hit a security warning offline."
+            FAIL=1
+          fi
+
+          # Every nested Mach-O must carry the same Developer ID, or the notary
+          # service rejects the submission.
+          echo "─── nested binaries ───────────────────────────────"
+          UNSIGNED=0
+          while IFS= read -r f; do
+            if ! codesign -dv --verbose=2 "$f" 2>&1 | grep -q "Authority=Developer ID Application"; then
+              echo "  NOT Developer ID: ${f#"$APP"/}"
+              UNSIGNED=$((UNSIGNED+1))
+            fi
+          done < <(find "$APP/Contents/Resources/whisper-bin" -type f \( -name '*.dylib' -o -perm +111 \) 2>/dev/null)
+          if [ "$UNSIGNED" -gt 0 ]; then
+            echo "::error::$UNSIGNED bundled binaries are not Developer ID signed."
+            FAIL=1
+          else
+            echo "  all whisper-bin binaries correctly signed"
+          fi
+
+          if [ "$FAIL" -ne 0 ]; then
+            echo "::error::Refusing to publish — this build would not install cleanly."
+            exit 1
+          fi
+          echo "✓ signed, notarized, stapled, Gatekeeper-accepted"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
