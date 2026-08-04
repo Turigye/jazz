@@ -1,0 +1,60 @@
+name: site
+
+# Publishes site/ to GitHub Pages. The page is plain static files — no build
+# step, no bundler — so this only uploads the folder as-is.
+#
+# Cloudflare Pages can serve the identical folder without this workflow:
+# connect the repo, leave the build command empty, and set the output
+# directory to `site`. Keeping both is harmless; whichever the domain points
+# at is the one people see.
+
+on:
+  push:
+    branches: [mac]
+    paths:
+      - 'site/**'
+      - '.github/workflows/site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race; a half-published site is worse than a stale one.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the page is intact before publishing
+        run: |
+          set -euo pipefail
+          for f in site/index.html site/styles.css site/app.js; do
+            [ -s "$f" ] || { echo "::error::$f missing or empty"; exit 1; }
+          done
+          # The fonts are self-hosted on purpose: a page whose argument is that
+          # nothing leaves your machine must not fetch its typefaces from a CDN.
+          for f in site/fonts/*.woff2; do
+            [ -s "$f" ] || { echo "::error::bundled font missing"; exit 1; }
+          done
+          if grep -rInE 'https?://(fonts\.googleapis|fonts\.gstatic|cdn\.|unpkg|jsdelivr)' site/; then
+            echo "::error::site references an external asset host"
+            exit 1
+          fi
+          echo "✓ static assets present, no third-party asset hosts"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4

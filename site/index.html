@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Jazz — offline voice dictation for macOS</title>
+<meta name="description" content="Hold two keys and talk. Jazz transcribes on your own Mac and types the result into whatever app you're in. No cloud, no account, no API key." />
+
+<meta property="og:title" content="Jazz — offline voice dictation for macOS" />
+<meta property="og:description" content="Speak. It types. Nothing leaves your Mac." />
+<meta property="og:type" content="website" />
+<meta property="og:image" content="img/og.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" href="img/icon-180.png" />
+<link rel="apple-touch-icon" href="img/icon-180.png" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="wrap nav-in">
+    <a class="mark" href="#top" aria-label="Jazz, back to top">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c9a227" stroke-width="1.9" stroke-linecap="round" aria-hidden="true">
+        <path d="M3 12h2M7 8v8M11 5v14M15 8v8M19 11h2"/>
+      </svg>
+      <span>Jazz</span>
+    </a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#private">Privacy</a>
+      <a href="#models">Models</a>
+      <a href="#download">Download</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ── Hero ─────────────────────────────────────────────────────────────── -->
+<section class="hero" id="top">
+  <div class="wrap">
+
+    <div class="module" id="module">
+      <svg width="188" height="86" viewBox="0 0 150 68" aria-label="Microphone input level meter" role="img">
+        <defs>
+          <radialGradient id="lamp" cx="50%" cy="96%" r="86%">
+            <stop offset="0%" stop-color="#ffd9a0" stop-opacity=".5"/>
+            <stop offset="55%" stop-color="#ffd9a0" stop-opacity=".16"/>
+            <stop offset="100%" stop-color="#ffd9a0" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#efe2c2"/>
+            <stop offset="62%" stop-color="#e8d9b6"/>
+            <stop offset="100%" stop-color="#d2c199"/>
+          </linearGradient>
+          <clipPath id="win"><rect x="0" y="0" width="150" height="68" rx="3"/></clipPath>
+        </defs>
+
+        <rect width="150" height="68" rx="3" fill="url(#face)"/>
+        <rect width="150" height="68" rx="3" fill="url(#lamp)"/>
+
+        <path d="M19 56 A 60 60 0 0 1 105.5 20.5" fill="none" stroke="#3a3225" stroke-width="1"/>
+        <path id="peakArc" d="M105.5 20.5 A 60 60 0 0 1 131 56" fill="none" stroke="#c4442f" stroke-width="1.9" opacity=".28"/>
+
+        <g stroke="#3a3225" stroke-width="1.1" stroke-linecap="round">
+          <line x1="20.5" y1="53" x2="24" y2="48"/>
+          <line x1="30" y1="43" x2="33" y2="39"/>
+          <line x1="43" y1="33" x2="45" y2="38"/>
+          <line x1="57" y1="26.5" x2="58.5" y2="31.5"/>
+          <line x1="72" y1="22.5" x2="72.8" y2="27.5"/>
+          <line x1="88" y1="21" x2="88" y2="26"/>
+        </g>
+        <g stroke="#a5341f" stroke-width="1.1" stroke-linecap="round">
+          <line x1="110" y1="24" x2="107.5" y2="28.5"/>
+          <line x1="122" y1="34" x2="118.5" y2="37.5"/>
+        </g>
+
+        <g font-family="'JetBrains Mono', ui-monospace, monospace" font-size="6.4" fill="#463b28">
+          <text x="16" y="63" text-anchor="middle">-20</text>
+          <text x="43" y="30" text-anchor="middle">-7</text>
+          <text x="72" y="17.5" text-anchor="middle">-3</text>
+          <text x="92" y="15.5" text-anchor="middle">0</text>
+        </g>
+        <text x="127" y="27" text-anchor="middle" font-family="'JetBrains Mono', ui-monospace, monospace"
+              font-size="6.4" fill="#a5341f">+3</text>
+        <text x="75" y="62" text-anchor="middle" font-family="'JetBrains Mono', ui-monospace, monospace"
+              font-size="6.2" letter-spacing="1.7" fill="#6b5c42" opacity=".55">VU</text>
+
+        <g clip-path="url(#win)">
+          <g id="needle" transform="rotate(-58 75 74)">
+            <line x1="75" y1="74" x2="75" y2="10" stroke="#2b2213" stroke-width="1.5" stroke-linecap="round"/>
+          </g>
+          <circle cx="75" cy="74" r="8.5" fill="#c9a227"/>
+          <circle cx="75" cy="74" r="3.6" fill="#2a2214"/>
+        </g>
+      </svg>
+      <span class="tc" id="timecode">00:00</span>
+    </div>
+
+    <div>
+      <button class="mic-hint" id="micBtn" type="button">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="micLabel">Use my microphone</span>
+      </button>
+    </div>
+
+    <h1>Speak. It types. Nothing leaves your Mac.</h1>
+    <p class="sub">Hold two keys and talk. Jazz transcribes on your own machine and types the
+      result into whatever app you're already in — editor, browser, terminal, anywhere.</p>
+
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="#download">
+        Download for macOS
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+      </a>
+      <a class="btn btn-ghost" href="#how">See how it works</a>
+    </div>
+    <p class="plate hero-meta" id="heroMeta">Apple Silicon · notarized by Apple</p>
+  </div>
+</section>
+
+<!-- ── How it works ─────────────────────────────────────────────────────── -->
+<section id="how">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="plate plate-brass">How it works</span>
+      <h2>Hold. Speak. Release.</h2>
+      <p>Try it here — press and hold the button, or hold <kbd>Space</kbd>. This is a
+        simulation of the real thing, at the speed the real thing runs.</p>
+    </div>
+
+    <div class="demo-grid reveal">
+      <div>
+        <div class="editor">
+          <div class="editor-bar">
+            <i></i><i></i><i></i>
+            <span class="name">Any app you're in</span>
+          </div>
+          <div class="editor-body idle" id="editor">Put the cursor anywhere and start talking.</div>
+        </div>
+        <button class="holdbtn" id="hold" type="button">Hold to dictate</button>
+      </div>
+
+      <div class="cols" style="grid-template-columns:1fr">
+        <div class="col">
+          <h3>It runs where you are</h3>
+          <p>No window to switch to, no box to paste out of. Jazz types into whatever
+            already has your cursor, so dictation fits the way you were working.</p>
+        </div>
+        <div class="col">
+          <h3>Five minutes at a stretch</h3>
+          <p>Long enough for a whole thought. A minute of speech comes back in about
+            five seconds on an M-series Mac.</p>
+        </div>
+        <div class="col">
+          <h3>It knows your words</h3>
+          <p>Add names, jargon and abbreviations it should get right, and short
+            snippets it should expand.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Privacy ──────────────────────────────────────────────────────────── -->
+<section id="private">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="plate plate-brass">Privacy</span>
+      <h2>There is nowhere to send it.</h2>
+      <p>Most dictation tools upload your microphone to a server. Jazz has no server, no
+        account and no API key — the model sits on your disk and runs on your GPU.</p>
+    </div>
+    <div class="cols reveal">
+      <div class="col">
+        <span class="ic" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </span>
+        <h3>Works on a plane</h3>
+        <p>Turn the network off entirely and nothing changes. Transcription never
+          needed it in the first place.</p>
+      </div>
+      <div class="col">
+        <span class="ic" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        </span>
+        <h3>No account, ever</h3>
+        <p>Download it and use it. There is no sign-up, no licence key and no
+          subscription to forget about.</p>
+      </div>
+      <div class="col">
+        <span class="ic" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3"/></svg>
+        </span>
+        <h3>Open to inspection</h3>
+        <p>The source is public. If you want to know exactly what it does with your
+          audio, you can go and read it.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── The meter ────────────────────────────────────────────────────────── -->
+<section id="meter">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="plate plate-brass">The meter</span>
+      <h2>The needle is not a bar chart.</h2>
+      <p>A real VU meter deflects linearly with <em>voltage</em>, not decibels — which is why
+        the numbers on its face bunch up at the quiet end. The needle has mass, so it
+        overshoots a transient by a few percent and settles back.</p>
+      <p>Jazz models both: a damped spring driven by the actual amplitude of your voice.
+        It is the same code moving the needle at the top of this page.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Models ───────────────────────────────────────────────────────────── -->
+<section id="models">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="plate plate-brass">Models</span>
+      <h2>Pick your trade-off.</h2>
+      <p>Choose at setup, change whenever. Everything downloads once and then stays
+        on your machine.</p>
+    </div>
+    <div class="plate-panel reveal">
+      <div class="tablewrap">
+        <table>
+          <caption class="plate" style="text-align:left;padding-bottom:16px">Speech models · measured on Apple Silicon</caption>
+          <thead>
+            <tr><th scope="col">Model</th><th scope="col">Download</th><th scope="col">Latency</th><th scope="col">Word error</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Tiny</td><td>75 MB</td><td>300 ms</td><td>9.0%</td></tr>
+            <tr><td>Base</td><td>142 MB</td><td>700 ms</td><td>6.0%</td></tr>
+            <tr><td>Small, quantized</td><td>190 MB</td><td>900 ms</td><td>4.5%</td></tr>
+            <tr class="pick"><td>Large v3 Turbo, Q5 <span class="pick-tag">Default</span></td><td>547 MB</td><td>1100 ms</td><td>2.8%</td></tr>
+            <tr><td>Large v3 Turbo</td><td>1549 MB</td><td>250 ms</td><td>2.5%</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Download ─────────────────────────────────────────────────────────── -->
+<section id="download" class="download">
+  <div class="wrap">
+    <div class="dl-panel reveal">
+      <img class="dl-icon" src="img/icon.png" alt="" width="84" height="84" />
+      <h2 style="font-size:clamp(24px,3.2vw,32px)">Get Jazz</h2>
+      <p style="margin:14px auto 26px;max-width:38ch">Free and open source. Signed and
+        notarized, so it opens without a security warning.</p>
+
+      <a class="btn btn-primary" id="dlBtn" href="https://github.com/Turigye/jazz/releases/latest">
+        Download for Apple Silicon
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+      </a>
+      <div class="dl-meta">
+        <span class="plate" id="dlVersion">Latest release</span>
+        <span class="plate" id="dlSize"></span>
+      </div>
+
+      <div class="reqs">
+        <div class="req">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+          <span>macOS 12 or later, Apple Silicon (M1 and up)</span>
+        </div>
+        <div class="req">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+          <span>About 600 MB free for the default model</span>
+        </div>
+        <div class="req">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+          <span>Asks for Microphone and Accessibility on first run — macOS does the asking, and Accessibility is what lets the hotkey work anywhere</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <span class="plate">Jazz · offline voice dictation</span>
+    <span class="plate">
+      <a href="https://github.com/Turigye/jazz">Source</a> ·
+      <a href="https://github.com/Turigye/jazz/releases">Releases</a> ·
+      Built by Turigye Micheal
+    </span>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
