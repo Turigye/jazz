@@ -205,6 +205,10 @@ jobs:
             - Apple Silicon / arm64 build (M1/M2/M3/M4 Macs).
             - Signed with a Developer ID Application certificate.
             - Notarized by Apple — Gatekeeper trusts it on download.
-          prerelease: true
-          make_latest: false
+          # A push to the `mac` branch is a test build and stays a prerelease.
+          # A version tag is a real release and should be the one people land
+          # on. These were hardcoded to prerelease back when the branch was the
+          # only trigger, which quietly demoted the first tagged release.
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/') }}
+          make_latest: ${{ startsWith(github.ref, 'refs/tags/') }}
           files: dist-installer/*.dmg
