@@ -1,7 +1,7 @@
 import type { ModelInfo, ModelSize } from './types'
 
 export const APP_NAME = 'Jazz'
-export const APP_VERSION = '1.1.0'
+export const APP_VERSION = '1.1.1'
 
 // ─── Model Registry ───────────────────────────────────────────────────────────
 
@@ -169,8 +169,12 @@ export const AUDIO = {
   BIT_DEPTH: 16,
   // Minimum RMS to consider audio non-silent (avoid transcribing quiet)
   SILENCE_THRESHOLD: 0.01,
-  // Maximum recording duration in seconds
-  MAX_DURATION_S: 60,
+  // Hard ceiling on a single recording, in seconds. This exists only as a
+  // safety net for a lost key-up (see PIPELINE below) — it is not a product
+  // limit, so it is set well beyond any plausible single dictation. Measured
+  // on an M2 Pro with large-v3-turbo-q5, a minute of speech transcribes in
+  // about 4.6s, so five minutes stays comfortably usable.
+  MAX_DURATION_S: 300,
 }
 
 // ─── Pipeline safety nets ──────────────────────────────────────────────────────
@@ -185,16 +189,43 @@ export const PIPELINE = {
   // Hard ceiling on a single recording, in ms — auto-stops and transcribes
   // whatever was captured so far if no stop signal ever arrives.
   MAX_RECORDING_MS: AUDIO.MAX_DURATION_S * 1000,
-  // Ceiling on a single whisper-server /inference request, in ms. A timeout
-  // here means the server process is likely wedged, so it gets killed and
-  // relaunched fresh on the next capture.
-  INFERENCE_TIMEOUT_MS: 30_000,
-  // Ceiling on the one-shot whisper-cli fallback process, in ms.
-  CLI_TIMEOUT_MS: 30_000,
-  // Last-resort backstop: if the whole capture→transcribe→inject pipeline
-  // hasn't finished by this point (ms), force state back to idle rather than
-  // leaving the app permanently stuck.
-  WATCHDOG_MS: 45_000,
+  // Floor for a transcription timeout, in ms. Short clips are dominated by
+  // fixed model overhead (~2.5s measured) rather than by their length.
+  MIN_TRANSCRIBE_TIMEOUT_MS: 30_000,
+  // Last-resort backstop floor: if capture→transcribe→inject hasn't finished,
+  // force state back to idle rather than leaving the app permanently stuck.
+  MIN_WATCHDOG_MS: 45_000,
+  /**
+   * Fraction of the recording's own length allowed for transcription before we
+   * assume the engine is wedged.
+   *
+   * A fixed ceiling was wrong once MAX_DURATION_S grew: five minutes of audio
+   * against a flat 30s timeout would abort a perfectly healthy request and kill
+   * the server. Measured throughput on an M2 Pro with large-v3-turbo-q5 is
+   * roughly 8% of realtime (59.5s of speech in 4.6s), so 60% leaves close to an
+   * order of magnitude of headroom for slower machines, larger models and CPU
+   * fallback while still catching a genuine hang.
+   */
+  TRANSCRIBE_TIMEOUT_RATIO: 0.6,
+}
+
+/** Timeout for transcribing `durationMs` of audio. */
+export function transcribeTimeoutMs(durationMs: number): number {
+  return Math.max(
+    PIPELINE.MIN_TRANSCRIBE_TIMEOUT_MS,
+    Math.round(durationMs * PIPELINE.TRANSCRIBE_TIMEOUT_RATIO)
+  )
+}
+
+/** Backstop for the whole pipeline given `durationMs` of captured audio. */
+export function watchdogMs(durationMs: number): number {
+  // Transcription plus post-processing and injection, with room to spare.
+  return Math.max(PIPELINE.MIN_WATCHDOG_MS, transcribeTimeoutMs(durationMs) + 15_000)
+}
+
+/** Seconds of 16 kHz mono 16-bit PCM represented by `bytes`. */
+export function pcmDurationMs(bytes: number): number {
+  return (bytes / (AUDIO.SAMPLE_RATE * (AUDIO.BIT_DEPTH / 8) * AUDIO.CHANNELS)) * 1000
 }
 
 // ─── Overlay ──────────────────────────────────────────────────────────────────

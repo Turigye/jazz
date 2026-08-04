@@ -1,6 +1,6 @@
 {
   "name": "jazz",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Offline voice dictation for Windows, Linux, and macOS — your personal Wispr Flow",
   "main": "./out/main/index.js",
   "homepage": "https://github.com/Turigye/jazz",
@@ -136,6 +136,28 @@
       "category": "AudioVideo",
       "executableName": "jazz"
     },
-    "afterSign": "scripts/verify-signing.js"
+    "afterSign": "scripts/verify-signing.js",
+    "dmg": {
+      "background": "resources/dmg-background.png",
+      "iconSize": 116,
+      "iconTextSize": 12,
+      "window": {
+        "width": 660,
+        "height": 400
+      },
+      "contents": [
+        {
+          "x": 170,
+          "y": 190,
+          "type": "file"
+        },
+        {
+          "x": 490,
+          "y": 190,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
   }
 }

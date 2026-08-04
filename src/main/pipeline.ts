@@ -1,7 +1,7 @@
 import { Notification } from 'electron'
 import type { JazzState } from '../shared/types'
 import { IPC } from '../shared/types'
-import { AUDIO, OVERLAY, PIPELINE } from '../shared/constants'
+import { AUDIO, OVERLAY, PIPELINE, watchdogMs } from '../shared/constants'
 import { audioCapture, pcmRms } from './audio'
 import { sttEngine } from './stt/engine'
 import { postProcess } from './postprocess'
@@ -88,15 +88,16 @@ async function finishCapture(): Promise<void> {
   // haven't anticipated still hangs, this forces the app back to idle instead
   // of leaving it stuck until the user force-quits. Guarded by myGen so a late
   // watchdog fire from a superseded call can't clobber a newer capture.
+  const wdMs = watchdogMs(durationMs)
   watchdogTimer = setTimeout(() => {
     if (myGen !== captureGen) return
-    log.error(`Pipeline watchdog: still busy after ${PIPELINE.WATCHDOG_MS}ms — forcing recovery to idle`)
+    log.error(`Pipeline watchdog: still busy after ${wdMs}ms — forcing recovery to idle`)
     busy = false
     watchdogTimer = null
     setState('error', 'Recovered from a stuck state')
     notify('Jazz', 'Jazz recovered from a stuck state. If this keeps happening, check Settings → Open Logs.')
     flashIdle(OVERLAY.SUCCESS_VISIBLE_MS)
-  }, PIPELINE.WATCHDOG_MS)
+  }, wdMs)
 
   try {
     const pcm = await audioCapture.stop()
