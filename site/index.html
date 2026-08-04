@@ -39,7 +39,7 @@
   <div class="wrap">
 
     <div class="module" id="module">
-      <svg width="188" height="86" viewBox="0 0 150 68" aria-label="Microphone input level meter" role="img">
+      <svg viewBox="0 0 140 64" class="meter-face" role="img" aria-label="Microphone input level">
         <defs>
           <radialGradient id="lamp" cx="50%" cy="96%" r="86%">
             <stop offset="0%" stop-color="#ffd9a0" stop-opacity=".5"/>
@@ -51,45 +51,44 @@
             <stop offset="62%" stop-color="#e8d9b6"/>
             <stop offset="100%" stop-color="#d2c199"/>
           </linearGradient>
-          <clipPath id="win"><rect x="0" y="0" width="150" height="68" rx="3"/></clipPath>
+          <clipPath id="win"><rect x="0" y="0" width="140" height="64" rx="3"/></clipPath>
         </defs>
-
-        <rect width="150" height="68" rx="3" fill="url(#face)"/>
-        <rect width="150" height="68" rx="3" fill="url(#lamp)"/>
-
-        <path d="M19 56 A 60 60 0 0 1 105.5 20.5" fill="none" stroke="#3a3225" stroke-width="1"/>
-        <path id="peakArc" d="M105.5 20.5 A 60 60 0 0 1 131 56" fill="none" stroke="#c4442f" stroke-width="1.9" opacity=".28"/>
-
-        <g stroke="#3a3225" stroke-width="1.1" stroke-linecap="round">
-          <line x1="20.5" y1="53" x2="24" y2="48"/>
-          <line x1="30" y1="43" x2="33" y2="39"/>
-          <line x1="43" y1="33" x2="45" y2="38"/>
-          <line x1="57" y1="26.5" x2="58.5" y2="31.5"/>
-          <line x1="72" y1="22.5" x2="72.8" y2="27.5"/>
-          <line x1="88" y1="21" x2="88" y2="26"/>
+        <rect width="140" height="64" rx="3" fill="url(#face)"/>
+        <rect width="140" height="64" rx="3" fill="url(#lamp)"/>
+        <path d="M 22.51 38.32 A 56 56 0 0 1 90.56 15.91" fill="none" stroke="#3a3225" stroke-width="1"/>
+        <path id="peakArc" d="M 90.56 15.91 A 56 56 0 0 1 117.49 38.32" fill="none" stroke="#c4442f" stroke-width="1.8" opacity=".28"/>
+        <line x1="27.6" y1="41.5" x2="22.51" y2="38.32" stroke="#3a3225" stroke-width="1.2"/>
+        <line x1="29.13" y1="35.05" x2="26.41" y2="32.85" stroke="#3a3225" stroke-width="0.8" opacity=".6"/>
+        <line x1="38.61" y1="29.08" x2="34.84" y2="24.41" stroke="#3a3225" stroke-width="1.2"/>
+        <line x1="47.02" y1="23.59" x2="44.26" y2="18.26" stroke="#3a3225" stroke-width="1.2"/>
+        <line x1="55.27" y1="20.22" x2="53.5" y2="14.49" stroke="#3a3225" stroke-width="1.2"/>
+        <line x1="66.28" y1="18.14" x2="65.83" y2="12.16" stroke="#3a3225" stroke-width="1.2"/>
+        <line x1="73.08" y1="15.59" x2="73.29" y2="12.1" stroke="#3a3225" stroke-width="0.8" opacity=".6"/>
+        <line x1="80.34" y1="19.08" x2="81.58" y2="13.21" stroke="#3a3225" stroke-width="1.2"/>
+        <line x1="88.36" y1="21.49" x2="90.56" y2="15.91" stroke="#3a3225" stroke-width="1.2"/>
+        <line x1="96.74" y1="25.75" x2="99.94" y2="20.68" stroke="#c4442f" stroke-width="1.2"/>
+        <line x1="105" y1="32.29" x2="109.2" y2="28.01" stroke="#c4442f" stroke-width="1.2"/>
+        <line x1="112.4" y1="41.5" x2="117.49" y2="38.32" stroke="#c4442f" stroke-width="1.2"/>
+        <g font-family="'JetBrains Mono', ui-monospace, monospace" font-size="6">
+        <text x="16.57" y="34.62" text-anchor="middle" dominant-baseline="middle" fill="#463b28">-20</text>
+        <text x="30.45" y="18.96" text-anchor="middle" dominant-baseline="middle" fill="#463b28">-10</text>
+        <text x="41.05" y="12.05" text-anchor="middle" dominant-baseline="middle" fill="#463b28">-7</text>
+        <text x="51.43" y="7.8" text-anchor="middle" dominant-baseline="middle" fill="#463b28">-5</text>
+        <text x="65.31" y="5.17" text-anchor="middle" dominant-baseline="middle" fill="#463b28">-3</text>
+        <text x="83.02" y="6.36" text-anchor="middle" dominant-baseline="middle" fill="#463b28">-1</text>
+        <text x="93.13" y="9.4" text-anchor="middle" dominant-baseline="middle" fill="#463b28">0</text>
+        <text x="103.69" y="14.76" text-anchor="middle" dominant-baseline="middle" fill="#a5341f">+1</text>
+        <text x="114.1" y="23.01" text-anchor="middle" dominant-baseline="middle" fill="#a5341f">+2</text>
+        <text x="123.43" y="34.62" text-anchor="middle" dominant-baseline="middle" fill="#a5341f">+3</text>
         </g>
-        <g stroke="#a5341f" stroke-width="1.1" stroke-linecap="round">
-          <line x1="110" y1="24" x2="107.5" y2="28.5"/>
-          <line x1="122" y1="34" x2="118.5" y2="37.5"/>
-        </g>
-
-        <g font-family="'JetBrains Mono', ui-monospace, monospace" font-size="6.4" fill="#463b28">
-          <text x="16" y="63" text-anchor="middle">-20</text>
-          <text x="43" y="30" text-anchor="middle">-7</text>
-          <text x="72" y="17.5" text-anchor="middle">-3</text>
-          <text x="92" y="15.5" text-anchor="middle">0</text>
-        </g>
-        <text x="127" y="27" text-anchor="middle" font-family="'JetBrains Mono', ui-monospace, monospace"
-              font-size="6.4" fill="#a5341f">+3</text>
-        <text x="75" y="62" text-anchor="middle" font-family="'JetBrains Mono', ui-monospace, monospace"
-              font-size="6.2" letter-spacing="1.7" fill="#6b5c42" opacity=".55">VU</text>
-
+        <text x="70" y="58" text-anchor="middle" font-size="6" letter-spacing="1.8"
+              font-family="'JetBrains Mono', ui-monospace, monospace" fill="#6b5c42" opacity=".55">VU</text>
         <g clip-path="url(#win)">
-          <g id="needle" transform="rotate(-58 75 74)">
-            <line x1="75" y1="74" x2="75" y2="10" stroke="#2b2213" stroke-width="1.5" stroke-linecap="round"/>
+          <g id="needle" transform="rotate(-58.00 70 68)">
+            <line x1="70" y1="68" x2="70" y2="8" stroke="#2b2213" stroke-width="1.4" stroke-linecap="round"/>
           </g>
-          <circle cx="75" cy="74" r="8.5" fill="#c9a227"/>
-          <circle cx="75" cy="74" r="3.6" fill="#2a2214"/>
+          <circle cx="70" cy="68" r="7" fill="#c9a227"/>
+          <circle cx="70" cy="68" r="3" fill="#2a2214"/>
         </g>
       </svg>
       <span class="tc" id="timecode">00:00</span>
