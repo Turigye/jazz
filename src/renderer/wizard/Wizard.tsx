@@ -29,11 +29,13 @@ const PICK_META: Record<ModelSize, { icon: string; variant: string; accuracyBars
 function StepDots({ current }: { current: Step }): JSX.Element {
   const idx = STEPS.indexOf(current)
   return (
-    <div className="flex gap-1">
+    <div className="flex gap-1.5">
       {STEPS.map((_, i) => (
         <div
           key={i}
-          className={`h-1 rounded-full transition-all ${i === idx ? 'w-8 bg-primary' : 'w-6 bg-white/20'}`}
+          className={`h-[3px] transition-all ${
+            i === idx ? 'w-8 bg-brass' : i < idx ? 'w-5 bg-brass-dim' : 'w-5 bg-outline-variant'
+          }`}
         />
       ))}
     </div>
@@ -89,16 +91,19 @@ export default function Wizard(): JSX.Element {
 
   const Welcome = (
     <div className="flex flex-col items-center text-center max-w-md mx-auto">
-      <div className="w-16 h-16 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center mb-5 shadow-glow">
-        <Icon name="graphic_eq" size={36} className="text-primary" />
+      <div className="w-16 h-16 rounded-lg bg-brass/12 border border-brass/35 flex items-center justify-center mb-6 shadow-glow">
+        <Icon name="graphic_eq" size={32} className="text-brass" strokeWidth={1.6} />
       </div>
-      <h2 className="text-headline-lg-mobile text-on-surface tracking-tight mb-3">Meet Jazz</h2>
-      <p className="text-body-md text-on-surface-variant mb-6">
-        Hold <kbd className="px-1.5 py-0.5 rounded-md border border-white/10 bg-surface-container-high text-on-surface text-label-sm font-mono">{PTT_LABEL}</kbd>,
-        speak naturally, and your words are typed into any app — 100% on your machine, no cloud, no API keys.
+      {/* Was text-headline-lg-mobile — a class that never existed in the token
+          config, so this heading silently rendered at the browser default. */}
+      <h2 className="text-headline-lg text-cream w-expanded mb-4">Meet Jazz</h2>
+      <p className="text-body-md text-cream-dim mb-7 leading-relaxed">
+        Hold <kbd className="px-1.5 py-0.5 rounded-[3px] border border-brass/35 bg-brass/10 text-brass-bright text-label-sm font-mono">{PTT_LABEL}</kbd>,
+        speak, and your words are typed into whatever app you're in. Nothing
+        leaves your Mac — no cloud, no API keys.
       </p>
-      <p className="text-label-sm text-on-surface-variant">
-        First, pick a speech model. It runs entirely offline once installed.
+      <p className="text-plate uppercase text-cream-faint">
+        First, pick a speech model — it runs offline once installed
       </p>
     </div>
   )
@@ -268,23 +273,28 @@ export default function Wizard(): JSX.Element {
     <div className="w-screen h-screen flex items-center justify-center p-3 ambient-glow">
       <div className="w-full h-full glass-strong rounded-xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="px-6 py-4 border-b border-white/10 flex flex-col gap-1 shrink-0">
+        <header className="px-7 py-4 border-b border-outline-variant/70 flex flex-col gap-1 shrink-0">
           <div className="flex items-center justify-between">
-            <span className="text-label-sm text-on-surface-variant uppercase tracking-widest">
+            <span className="text-plate uppercase text-cream-faint w-condensed">
               Step {stepNum} of {STEPS.length}
             </span>
             <StepDots current={step} />
           </div>
           {step === 'pick' && (
             <>
-              <h1 className="text-headline-md text-on-surface tracking-tight mt-1">Select your model</h1>
-              <p className="text-label-md text-on-surface-variant">
-                Pick the model that matches your hardware. You can change this later.
+              <h1 className="text-headline-md text-cream w-expanded mt-2">Pick a speech model</h1>
+              <p className="text-label-md text-cream-dim">
+                Match it to your hardware — you can change this later.
               </p>
             </>
           )}
           {step === 'permissions' && (
-            <h1 className="text-headline-md text-on-surface tracking-tight mt-1">Grant permissions</h1>
+            <>
+              <h1 className="text-headline-md text-cream w-expanded mt-2">Two permissions</h1>
+              <p className="text-label-md text-cream-dim">
+                macOS asks for these itself — Jazz never sees your password.
+              </p>
+            </>
           )}
         </header>
 
@@ -298,8 +308,8 @@ export default function Wizard(): JSX.Element {
         </section>
 
         {/* Footer */}
-        <footer className="px-6 py-3 border-t border-white/10 bg-surface-container-lowest/50 shrink-0 flex items-center justify-between">
-          <div className="text-label-sm text-on-surface-variant">
+        <footer className="px-7 py-3.5 border-t border-outline-variant/70 bg-surface-container-lowest/50 shrink-0 flex items-center justify-between">
+          <div className="text-plate uppercase text-cream-faint">
             {step === 'welcome' && 'Welcome to Jazz'}
             {step === 'pick' && `Selected: ${MODELS[selected].label.split(' (')[0].replace(' ★ Recommended', '')}`}
             {step === 'download' && 'Downloading from Hugging Face'}
