@@ -13,6 +13,7 @@
 <meta name="twitter:card" content="summary_large_image" />
 <link rel="icon" href="img/icon-180.png" />
 <link rel="apple-touch-icon" href="img/icon-180.png" />
+<link rel="preload" href="fonts/archivo-wght.woff2" as="font" type="font/woff2" crossorigin />
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -26,9 +27,10 @@
       <span>Jazz</span>
     </a>
     <nav class="nav-links" aria-label="Sections">
-      <a href="#how">How it works</a>
+      <a href="#result">The result</a>
       <a href="#private">Privacy</a>
-      <a href="#models">Models</a>
+      <a href="#speed">Speed</a>
+      <a href="#faq">FAQ</a>
       <a href="#download">Download</a>
     </nav>
   </div>
@@ -110,9 +112,64 @@
         Download for macOS
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
       </a>
-      <a class="btn btn-ghost" href="#how">See how it works</a>
+      <a class="btn btn-ghost" href="#result">See what it produces</a>
     </div>
     <p class="plate hero-meta" id="heroMeta">Apple Silicon · notarized by Apple</p>
+  </div>
+</section>
+
+<!-- ── The result (before / after) ──────────────────────────────────────── -->
+<section id="result">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="plate plate-brass">The result</span>
+      <h2>Speech is messy. What lands isn't.</h2>
+      <p>Jazz strips the fillers, applies your dictionary and expands your snippets —
+        deterministically. It doesn't paraphrase you, and it doesn't invent anything.</p>
+    </div>
+
+    <div class="reveal">
+      <div class="switch" role="tablist" aria-label="Example type">
+        <button class="sw on" role="tab" aria-selected="true" data-ex="dev" type="button">Writing code</button>
+        <button class="sw" role="tab" aria-selected="false" data-ex="mail" type="button">Writing to a colleague</button>
+      </div>
+
+      <div class="ba" id="ex-dev">
+        <div class="ba-card">
+          <p class="ba-lbl">What you said</p>
+          <p class="ba-txt">so <s>um</s> can you <s>basically</s> refactor the <s>uh</s>
+            <span class="hl">use effect</span> in <span class="hl">nav bar tsx</span>,
+            <s>you know</s>, and then <s>like</s> ship it <span class="hl">— eta</span></p>
+        </div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="ba-card out">
+          <p class="ba-lbl">What Jazz typed</p>
+          <p class="ba-txt">Can you refactor the <b>useEffect</b> in <b>NavBar.tsx</b>, and then
+            ship it? <b>Estimated delivery:</b></p>
+        </div>
+      </div>
+
+      <div class="ba" id="ex-mail" hidden>
+        <div class="ba-card">
+          <p class="ba-lbl">What you said</p>
+          <p class="ba-txt">hey sarah <s>um</s> thanks for the call earlier, <s>uh</s> I've attached
+            the revised quote and <s>basically</s> we can start on the fifteenth if that works,
+            <s>you know</s>, let me know <span class="hl">— sig</span></p>
+        </div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="ba-card out">
+          <p class="ba-lbl">What Jazz typed</p>
+          <p class="ba-txt">Hey Sarah, thanks for the call earlier. I've attached the revised quote
+            and we can start on the fifteenth if that works. Let me know.<br/>
+            <b>Best,<br/>Turigye</b></p>
+        </div>
+      </div>
+
+      <p class="ba-key">
+        <span><s>struck</s> filler words removed</span>
+        <span><span class="hl">highlighted</span> your dictionary and snippets</span>
+      </p>
+    </div>
   </div>
 </section>
 
@@ -146,15 +203,32 @@
         </div>
         <div class="col">
           <h3>Five minutes at a stretch</h3>
-          <p>Long enough for a whole thought. A minute of speech comes back in about
-            five seconds on an M-series Mac.</p>
+          <p>Long enough for a whole thought, not a sentence at a time.</p>
         </div>
         <div class="col">
-          <h3>It knows your words</h3>
-          <p>Add names, jargon and abbreviations it should get right, and short
-            snippets it should expand.</p>
+          <h3>Two keys, rebindable</h3>
+          <p>Hold <kbd>⌃</kbd><kbd>⌘</kbd> to talk, or tap <kbd>⌃</kbd><kbd>⌥</kbd> to leave it
+            listening. Change either in Settings.</p>
         </div>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Every app ────────────────────────────────────────────────────────── -->
+<section id="apps">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="plate plate-brass">Everywhere you type</span>
+      <h2>No integrations to wait for.</h2>
+      <p>Jazz types into the focused text field the way your keyboard does, so it works in
+        anything that accepts typing — including apps that shipped after it did.</p>
+    </div>
+    <div class="chips reveal">
+      <span>VS&nbsp;Code</span><span>Cursor</span><span>Xcode</span><span>Terminal</span>
+      <span>Slack</span><span>Notion</span><span>Obsidian</span><span>Linear</span>
+      <span>Gmail</span><span>Figma</span><span>Safari</span><span>Messages</span>
+      <span class="more">…and anything else</span>
     </div>
   </div>
 </section>
@@ -165,35 +239,88 @@
     <div class="sec-head reveal">
       <span class="plate plate-brass">Privacy</span>
       <h2>There is nowhere to send it.</h2>
-      <p>Most dictation tools upload your microphone to a server. Jazz has no server, no
-        account and no API key — the model sits on your disk and runs on your GPU.</p>
+      <p>Cloud dictation tools answer "is my audio safe?" with certifications. Jazz answers it
+        with architecture: there is no server, no account and no upload path. The model sits on
+        your disk and runs on your GPU.</p>
     </div>
-    <div class="cols reveal">
-      <div class="col">
-        <span class="ic" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        </span>
-        <h3>Works on a plane</h3>
-        <p>Turn the network off entirely and nothing changes. Transcription never
-          needed it in the first place.</p>
+    <div class="proof reveal">
+      <div class="proof-main">
+        <p class="plate plate-brass">Try this</p>
+        <h3>Turn off Wi-Fi. Nothing changes.</h3>
+        <p>Downloading your model is the only thing Jazz ever uses the network for. After that
+          it has no reason to reach out and no code that does. This page holds itself to the
+          same line — its typefaces are served from here, not from a font CDN, and the build
+          refuses to publish if that ever stops being true.</p>
       </div>
-      <div class="col">
-        <span class="ic" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
-        </span>
-        <h3>No account, ever</h3>
-        <p>Download it and use it. There is no sign-up, no licence key and no
-          subscription to forget about.</p>
-      </div>
-      <div class="col">
-        <span class="ic" aria-hidden="true">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3"/></svg>
-        </span>
-        <h3>Open to inspection</h3>
-        <p>The source is public. If you want to know exactly what it does with your
-          audio, you can go and read it.</p>
+      <div class="cols" style="grid-template-columns:1fr">
+        <div class="col"><h3>No account, ever</h3>
+          <p>Download and use it. No sign-up, no licence key, nothing to cancel.</p></div>
+        <div class="col"><h3>Open to inspection</h3>
+          <p>The source is public. You don't have to take any of this on trust.</p></div>
       </div>
     </div>
+    <div class="mid-cta reveal">
+      <a class="btn btn-primary" href="#download">Download for macOS
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg></a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Dictionary & snippets ────────────────────────────────────────────── -->
+<section id="vocab">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="plate plate-brass">Your words</span>
+      <h2>Teach it the words it keeps getting wrong.</h2>
+      <p>Every transcriber mangles names, product terms and acronyms. Jazz takes a list of
+        yours and fixes them on the way out — and expands short phrases into long ones.</p>
+    </div>
+    <div class="two reveal">
+      <div class="panel">
+        <p class="plate plate-brass">Dictionary</p>
+        <table class="mini">
+          <thead><tr><th>You say</th><th>It writes</th></tr></thead>
+          <tbody>
+            <tr><td>use effect</td><td>useEffect</td></tr>
+            <tr><td>nav bar tsx</td><td>NavBar.tsx</td></tr>
+            <tr><td>turigye</td><td>Turigye</td></tr>
+            <tr><td>postgres</td><td>PostgreSQL</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <p class="plate plate-brass">Snippets</p>
+        <table class="mini">
+          <thead><tr><th>You say</th><th>It writes</th></tr></thead>
+          <tbody>
+            <tr><td>sig</td><td>Best,<br/>Turigye</td></tr>
+            <tr><td>eta</td><td>Estimated delivery:</td></tr>
+            <tr><td>my cal</td><td>cal.com/turigye</td></tr>
+            <tr><td>addr</td><td>Your full address</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Speed ────────────────────────────────────────────────────────────── -->
+<section id="speed">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="plate plate-brass">Speed</span>
+      <h2>Measured, not claimed.</h2>
+      <p>These are timings from a real session log, not a benchmark written to flatter.
+        Your numbers will differ with hardware and model.</p>
+    </div>
+    <div class="stats reveal">
+      <div class="stat"><b>4.6s</b><span class="plate">to transcribe 60 seconds of speech</span></div>
+      <div class="stat"><b>2.8%</b><span class="plate">word error rate, default model</span></div>
+      <div class="stat"><b>0</b><span class="plate">bytes sent anywhere</span></div>
+    </div>
+    <p class="footnote reveal">Measured on an Apple M2 Pro running Large v3 Turbo (Q5) on Metal.
+      A slower Mac or a larger model will take longer; a smaller model will be quicker and
+      less accurate.</p>
   </div>
 </section>
 
@@ -241,6 +368,72 @@
   </div>
 </section>
 
+<!-- ── Comparison ───────────────────────────────────────────────────────── -->
+<section id="compare">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="plate plate-brass">Compared</span>
+      <h2>Against the way most dictation works.</h2>
+      <p>Not a swipe at anyone in particular — this is simply what changes when transcription
+        happens on your machine instead of someone else's.</p>
+    </div>
+    <div class="plate-panel reveal">
+      <div class="tablewrap">
+        <table class="cmp">
+          <thead><tr><th scope="col"></th><th scope="col">Jazz</th><th scope="col">Cloud dictation</th></tr></thead>
+          <tbody>
+            <tr><td>Your audio leaves the machine</td><td class="y">Never</td><td class="n">By design</td></tr>
+            <tr><td>Works with no internet</td><td class="y">Always</td><td class="n">No</td></tr>
+            <tr><td>Account required</td><td class="y">No</td><td class="n">Yes</td></tr>
+            <tr><td>Cost</td><td class="y">Free</td><td class="n">Subscription</td></tr>
+            <tr><td>Your words rewritten by a model</td><td class="y">Never</td><td class="n">Often</td></tr>
+            <tr><td>Source you can read</td><td class="y">Yes</td><td class="n">No</td></tr>
+            <tr><td>Platforms</td><td class="n">macOS only</td><td class="y">Usually several</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="footnote" style="margin-top:18px">The last row is the honest cost of the
+        approach. A local model has to be built per platform, and only the Mac build is
+        finished.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── FAQ ──────────────────────────────────────────────────────────────── -->
+<section id="faq">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <span class="plate plate-brass">Questions</span>
+      <h2>Before you download.</h2>
+    </div>
+    <div class="faq reveal">
+      <details><summary>Is it really free?</summary>
+        <p>Yes, and there is no tier above it. No account, no trial, no card. The source is
+          public and you can build it yourself if you'd rather.</p></details>
+      <details><summary>Does it genuinely work offline?</summary>
+        <p>Yes. After the one-time model download the app makes no network requests. Turn off
+          Wi-Fi and dictation is unchanged.</p></details>
+      <details><summary>How accurate is it?</summary>
+        <p>The default model has a 2.8% word error rate — roughly one word in thirty-five, and
+          usually a proper noun. The dictionary exists to fix the ones that matter to you.</p></details>
+      <details><summary>Does it change what I said?</summary>
+        <p>Only in ways you configure: filler words removed, your dictionary applied, your
+          snippets expanded. There is no AI rewriting step, so it can't quietly reword you.</p></details>
+      <details><summary>Why Apple Silicon only?</summary>
+        <p>The speech model runs on the GPU through Metal. Intel Macs have no equivalent path
+          fast enough to be pleasant. Windows and Linux builds exist on other branches but
+          predate this version.</p></details>
+      <details><summary>What permissions does it ask for, and why?</summary>
+        <p>Microphone, to hear you. Accessibility, so the hotkey works while another app is
+          focused and so it can paste into it. macOS asks for both itself — Jazz never sees
+          your password, and neither grant gives it network access.</p></details>
+      <details><summary>Where do my transcripts go?</summary>
+        <p>Into a local file so you can re-insert a recent one from the menu bar. Clear them
+          any time in Settings.</p></details>
+    </div>
+  </div>
+</section>
+
 <!-- ── Download ─────────────────────────────────────────────────────────── -->
 <section id="download" class="download">
   <div class="wrap">
@@ -270,7 +463,7 @@
         </div>
         <div class="req">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
-          <span>Asks for Microphone and Accessibility on first run — macOS does the asking, and Accessibility is what lets the hotkey work anywhere</span>
+          <span>Asks for Microphone and Accessibility on first run — macOS does the asking</span>
         </div>
       </div>
     </div>

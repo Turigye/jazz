@@ -235,6 +235,27 @@
     })
     .catch(function () { /* the static link stands */ });
 
+
+  /* ── Before / after example switch ──────────────────────────────────────
+     Two audiences, one section: the same deterministic clean-up shown on code
+     and on ordinary correspondence, because the objection "that's a developer
+     tool" is answered faster by an example than by a sentence. */
+  var switches = document.querySelectorAll('.sw');
+  Array.prototype.forEach.call(switches, function (btn) {
+    btn.addEventListener('click', function () {
+      var want = btn.getAttribute('data-ex');
+      Array.prototype.forEach.call(switches, function (b) {
+        var on = b === btn;
+        b.classList.toggle('on', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      ['dev', 'mail'].forEach(function (k) {
+        var el = document.getElementById('ex-' + k);
+        if (el) el.hidden = (k !== want);
+      });
+    });
+  });
+
   /* ── Chrome ─────────────────────────────────────────────────────────── */
   var nav = document.getElementById('nav');
   if (nav) {
